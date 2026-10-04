@@ -26,6 +26,9 @@ Open http://localhost:5173. Check the API at http://localhost:4000/health → `{
 docker compose up --build    # web :8080, server :4000, db :5432
 ```
 
+### Offline base map
+The map works with no internet by default (`MAP_MODE=offline`): the exercise-area tiles (`apps/web/public/tiles/area.pmtiles`) and map fonts and sprites (`apps/web/public/map-assets/`) are in the repo. To regenerate them for another area or newer data, run `scripts/fetch-tiles.sh` once while online (needs `curl`, `unzip` and Node). Set `MAP_MODE=online` in `.env` to use the hosted OpenFreeMap style instead. Details in `docs/ARCHITECTURE.md`.
+
 ## Scripts
 | Script | Purpose |
 |---|---|

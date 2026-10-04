@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@protomaps/basemaps": "^5.7.2",
     "@radix-ui/react-slot": "^1.3.3",
     "@vyuha/engine": "workspace:^",
     "@vyuha/shared": "workspace:^",
@@ -21,6 +22,7 @@
     "i18next": "^26.4.2",
     "lucide-react": "^1.52.0",
     "maplibre-gl": "^6.12.0",
+    "pmtiles": "^4.5.0",
     "react": "18",
     "react-dom": "18",
     "react-hook-form": "^7.89.0",

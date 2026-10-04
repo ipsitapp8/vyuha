@@ -30,7 +30,7 @@ const OUTCOME_COLOR: Record<OutcomeKey, string> = {
  */
 export function GhostReplay({ summary }: { summary: AarSummary }) {
   const { t } = useTranslation();
-  const { sessionId, durationTicks, players, areaBounds } = summary.meta;
+  const { sessionId, scenarioId, durationTicks, players, areaBounds } = summary.meta;
   const [tick, setTick] = useState(0);
   const [playerId, setPlayerId] = useState(players[0]?.id ?? '');
   const [playing, setPlaying] = useState(false);
@@ -220,6 +220,7 @@ export function GhostReplay({ summary }: { summary: AarSummary }) {
             {snapshot ? (
               <TruthMap
                 bounds={areaBounds}
+                scenarioId={scenarioId}
                 truth={snapshot.truth}
                 watched={watched}
                 onTilesOffline={() => setTilesOffline(true)}
@@ -239,6 +240,7 @@ export function GhostReplay({ summary }: { summary: AarSummary }) {
             {watched ? (
               <CockpitMap
                 bounds={areaBounds}
+                scenarioId={scenarioId}
                 perceived={watched}
                 picture={watched}
                 selectedContactId={null}

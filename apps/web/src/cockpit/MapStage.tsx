@@ -12,6 +12,7 @@ export type Tool = 'move' | 'isr' | null;
 
 interface Props {
   bounds: AreaBounds;
+  scenarioId: string;
   perceived: PerceivedStateDto;
   picture: PerceivedStateDto;
   degradation: Degradation;
@@ -26,6 +27,7 @@ interface Props {
 /** The map plus its tools (move / ISR), legend and the jamming / frozen-picture effects. */
 export function MapStage({
   bounds,
+  scenarioId,
   perceived,
   picture,
   degradation,
@@ -63,6 +65,7 @@ export function MapStage({
     <div className={`relative h-full w-full ${frozen ? 'vy-frozen' : ''}`}>
       <CockpitMap
         bounds={bounds}
+        scenarioId={scenarioId}
         perceived={perceived}
         picture={picture}
         selectedContactId={selectedContactId}

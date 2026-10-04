@@ -1,21 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Map as MapLibreMap, NavigationControl, type StyleSpecification } from 'maplibre-gl';
+import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@/lib/maplibre';
 import { elevationRange } from '@vyuha/engine';
 import { useTranslation } from 'react-i18next';
 import type { AreaBounds, TerrainGridDto } from '@vyuha/shared';
+import { attachBasemap, INITIAL_STYLE } from '@/lib/basemap';
 import { elevationColor } from '@/lib/terrainColor';
-
-const MAP_STYLE_URL: string =
-  import.meta.env.VITE_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/liberty';
-
-// Used when the tile style cannot be loaded (air-gapped / offline): the terrain overlay still renders.
-const OFFLINE_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } }],
-};
 
 function renderHeatmap(grid: TerrainGridDto): string {
   const canvas = document.createElement('canvas');
@@ -49,11 +40,9 @@ export function TerrainMap({ bounds, terrain, onError }: Props) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    let usedFallback = false;
-
     const map = new MapLibreMap({
       container,
-      style: MAP_STYLE_URL,
+      style: INITIAL_STYLE,
       bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
       fitBoundsOptions: { padding: 20 },
     });
@@ -84,14 +73,12 @@ export function TerrainMap({ bounds, terrain, onError }: Props) {
     };
 
     map.on('style.load', addOverlay);
-    map.on('error', () => {
-      if (!usedFallback && !map.isStyleLoaded()) {
-        usedFallback = true;
-        map.setStyle(OFFLINE_STYLE);
-      }
-    });
+    const detachBasemap = attachBasemap(map, { bounds, terrain, onFallback: () => undefined });
 
-    return () => map.remove();
+    return () => {
+      detachBasemap();
+      map.remove();
+    };
   }, [bounds, terrain, onError]);
 
   return (

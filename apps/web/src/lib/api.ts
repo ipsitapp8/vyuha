@@ -13,6 +13,7 @@ import {
   scenarioListResponseSchema,
   sessionResponseSchema,
   sessionListResponseSchema,
+  terrainGridSchema,
   type AarDecisionDetail,
   type AarSnapshot,
   type AarSummary,
@@ -29,6 +30,7 @@ import {
   type ScenarioDetail,
   type ScenarioSummary,
   type SessionListResponse,
+  type TerrainGridDto,
   type Speed,
 } from '@vyuha/shared';
 
@@ -99,6 +101,9 @@ export const api = {
   },
   getScenarioGeo(id: string): Promise<ScenarioGeoResponse> {
     return request(`/scenarios/${encodeURIComponent(id)}/geo`, scenarioGeoResponseSchema);
+  },
+  getScenarioTerrain(id: string): Promise<TerrainGridDto> {
+    return request(`/scenarios/${encodeURIComponent(id)}/terrain`, terrainGridSchema);
   },
   startGeoIngest(id: string): Promise<IngestJob> {
     return request(`/scenarios/${encodeURIComponent(id)}/ingest-geo`, ingestJobSchema, {

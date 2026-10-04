@@ -5,7 +5,8 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 ARG VITE_API_URL=http://localhost:4000
 ARG VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
-ENV VITE_API_URL=$VITE_API_URL VITE_MAP_STYLE_URL=$VITE_MAP_STYLE_URL
+ARG VITE_MAP_MODE=offline
+ENV VITE_API_URL=$VITE_API_URL VITE_MAP_STYLE_URL=$VITE_MAP_STYLE_URL VITE_MAP_MODE=$VITE_MAP_MODE
 RUN pnpm --filter @vyuha/web build
 
 FROM nginx:alpine

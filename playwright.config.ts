@@ -16,7 +16,13 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     channel: process.env['PW_CHANNEL'] ?? 'chrome',
     launchOptions: {
-      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+      args: [
+        '--use-gl=angle',
+        '--use-angle=swiftshader',
+        '--enable-unsafe-swiftshader',
+        // DNS fails for every host but localhost, as on a machine with the network unplugged.
+        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost',
+      ],
     },
     trace: 'retain-on-failure',
   },

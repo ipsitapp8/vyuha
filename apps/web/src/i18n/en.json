@@ -175,7 +175,7 @@
       "isrHint": "Tap the map where you want ISR coverage.",
       "unitToMove": "Unit to move",
       "frozen": "DATA-LINK LOST: contacts frozen at {{time}}",
-      "tilesOffline": "Map tiles unavailable: showing positions only.",
+      "tilesOffline": "Street map unavailable: showing terrain shading and positions.",
       "legendYou": "You",
       "legendFriendly": "Teammate (last known)",
       "legendContact": "Reported contact",
@@ -394,7 +394,7 @@
       "pick": "Pick a trainee below to see the exercise through their eyes.",
       "overlay": "Believed: {{type}}",
       "legend": "Solid = truth. Dashed outlines on the truth map = what {{name}} believes.",
-      "tilesOffline": "Map tiles unavailable: showing positions only."
+      "tilesOffline": "Street map unavailable: showing terrain shading and positions."
     },
     "cards": {
       "title": "Trainees",

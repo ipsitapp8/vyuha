@@ -112,6 +112,7 @@ export const aarSummarySchema = z.object({
         unitId: z.string(),
       }),
     ),
+    scenarioId: z.string(),
     areaBounds: z.object({
       south: z.number(),
       west: z.number(),

@@ -126,6 +126,7 @@ export class AarService {
         durationTicks: session.currentTick,
         teams,
         players,
+        scenarioId: session.scenarioId,
         areaBounds: p.scenario.areaBounds,
       },
       decisions,

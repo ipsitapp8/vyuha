@@ -44,6 +44,25 @@ export function registerGeoRoutes(app: FastifyInstance, deps: Deps, guards: Auth
     },
   );
 
+  /**
+   * Terrain grid only, for any signed-in user: every map falls back to a hillshade drawn from it when
+   * base map tiles are unavailable. Open elevation data, no exercise state.
+   */
+  app.get<{ Params: IdParams }>(
+    '/scenarios/:id/terrain',
+    { preHandler: guards.requireAuth },
+    async (request, reply) => {
+      try {
+        const terrain = await deps.geo.getTerrain(request.params.id);
+        if (!terrain) return sendError(reply, 404, 'NOT_FOUND', 'No terrain stored for scenario');
+        return terrain;
+      } catch (err) {
+        request.log.error({ err }, 'load terrain failed');
+        return sendError(reply, 500, 'INTERNAL_ERROR', 'Could not load terrain');
+      }
+    },
+  );
+
   /** Stored terrain grid + weather for the scenario (either may be null before ingestion). */
   app.get<{ Params: IdParams }>('/scenarios/:id/geo', instructorOnly, async (request, reply) => {
     try {

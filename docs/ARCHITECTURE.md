@@ -59,17 +59,45 @@ AAR: the review shows truth and a trainee's perception at any tick without stori
 
 ## Air-gapped deployment
 
-`docker compose up --build` starts PostgreSQL, the server and the web build on one machine. Once the
-images are built it needs no internet: migrations and the demo seed run on start (`SEED_ON_START`),
+`docker compose up --build` starts PostgreSQL, the server and the web build on one machine and needs
+no internet once the images are built. Migrations and the demo seed run on start (`SEED_ON_START`),
 and the seed falls back to the real Open-Meteo terrain and weather snapshot bundled in the repo
 (`pnpm --filter @vyuha/server geo:fallback` regenerates it).
 
-Map tiles are the one external dependency. The base map style is the build argument
-`VITE_MAP_STYLE_URL` (default OpenFreeMap). On an isolated network, host an OpenMapTiles-compatible
-style and tiles inside it (for example tileserver-gl with an MBTiles extract of the exercise area)
-and rebuild the web image with `VITE_MAP_STYLE_URL=http://<tile-host>/styles/<name>/style.json`.
-Without a reachable style the maps have no base layer, but units, the exercise and the exports
-still work. This tile-hosting setup is described here but has not been tested.
+### Offline base map
+
+The map reads a single static [PMTiles](https://docs.protomaps.com/pmtiles/) file served by the web
+container, so there is no tile server:
+
+| File                                 | What it is                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/public/tiles/area.pmtiles` | Protomaps/OpenStreetMap vector tiles for Op Silent Ridge plus a 20 km margin, zoom 0 to 15 (about 3.5 MB)                 |
+| `apps/web/public/map-assets/`        | Glyphs (Noto Sans Regular, Medium, Italic) and the v4 `light` sprite sheet from protomaps/basemaps-assets                  |
+
+Both are committed, so a fresh clone works offline. To rebuild them (new area, newer OSM data) run
+`scripts/fetch-tiles.sh` once while online. It downloads the `pmtiles` CLI if it is missing, finds
+the newest Protomaps planet build and runs
+`pmtiles extract <build> area.pmtiles --bbox=77.23,33.90,77.92,34.44 --maxzoom=15`, then verifies the
+archive and downloads the matching assets. `BBOX=min_lon,min_lat,max_lon,max_lat` and `MAXZOOM=n`
+override the area, `--force` re-downloads.
+
+How the browser uses it (`apps/web/src/lib/basemap.ts`):
+
+1. `MAP_MODE=offline` (default; `VITE_MAP_MODE` in the web app, `MAP_MODE` in `.env` and
+   docker compose) builds a local MapLibre style with the `pmtiles://` protocol. The style holds no URL
+   outside the app's own origin (a unit test checks this) and its attribution is plain text.
+2. The tile file is read with HTTP Range requests. nginx serves `/tiles/` as plain static bytes
+   (no gzip, `Accept-Ranges: bytes`, a real 404 when missing) and the Vite dev server does the same.
+3. If the PMTiles file is missing or is not a PMTiles archive, every map falls back to a hillshade
+   with elevation tint and contour lines drawn from the stored terrain grid
+   (`GET /scenarios/:id/terrain`, any signed-in user), so a map is never blank. A notice says so.
+4. `MAP_MODE=online` uses the hosted style in `VITE_MAP_STYLE_URL` instead (default OpenFreeMap),
+   and also falls back to the hillshade if it cannot load.
+
+The Playwright test `e2e/offline-map.spec.ts` aborts every non-localhost request, makes the browser's
+DNS fail for all other hosts, and asserts that the map draws from the PMTiles file with Range
+responses, makes no external request and has no failed request; a second test removes the tile file
+and checks the hillshade fallback.
 
 Set `JWT_SECRET` before real use. The compose file ships a placeholder and the server logs a warning
 when it is still in place in production.

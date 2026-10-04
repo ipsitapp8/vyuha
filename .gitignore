@@ -1,9 +1,10 @@
-node_modules
-dist
-.env
+*.log
 *.tsbuildinfo
-coverage
+.env
+.tools
 .vite
+coverage
+dist
+node_modules
 playwright-report
 test-results
-*.log

@@ -7,6 +7,7 @@ export function aarSummary(): AarSummary {
   return {
     meta: {
       sessionId: 's1',
+      scenarioId: 'scn1',
       code: 'ABC234',
       scenarioTitle: 'Op Silent Ridge',
       status: 'ENDED',

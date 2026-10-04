@@ -202,6 +202,7 @@ function Cockpit({
         <section className="relative h-[46dvh] shrink-0 lg:h-auto lg:flex-1">
           <MapStage
             bounds={lobby.session.areaBounds}
+            scenarioId={lobby.session.scenarioId}
             perceived={perceived}
             picture={picture}
             degradation={degradation}

@@ -100,6 +100,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
           <div className="h-[46dvh] min-h-72 overflow-hidden rounded-lg border border-border">
             <TruthMap
               bounds={b}
+              scenarioId={lobby.session.scenarioId}
               truth={truth}
               watched={watched}
               onTilesOffline={() => setTilesOffline(true)}
@@ -114,6 +115,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
             {watched ? (
               <CockpitMap
                 bounds={b}
+                scenarioId={lobby.session.scenarioId}
                 perceived={watched}
                 picture={watched}
                 selectedContactId={null}

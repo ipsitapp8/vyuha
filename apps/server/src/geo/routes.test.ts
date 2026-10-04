@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { AUTH_COOKIE_NAME, ingestJobSchema, scenarioGeoResponseSchema } from '@vyuha/shared';
+import {
+  AUTH_COOKIE_NAME,
+  ingestJobSchema,
+  scenarioGeoResponseSchema,
+  terrainGridSchema,
+} from '@vyuha/shared';
 import { buildApp, type App } from '../app';
 import { hashPassword } from '../auth';
 import { createMemoryDeps, memoryGeo, testConfig } from '../testing';
@@ -132,5 +137,25 @@ describe('geo routes', () => {
     expect(
       (await f.inject({ method: 'GET', url: '/scenarios/s1/ingest-geo', headers: h })).statusCode,
     ).toBe(404);
+  });
+
+  it('serves just the terrain grid to any signed-in user, for the hillshade map fallback', async () => {
+    const { f, geo, instructor, trainee } = await setup();
+    const url = '/scenarios/s1/terrain';
+    expect((await f.inject({ method: 'GET', url })).statusCode).toBe(401);
+    const missing = await f.inject({ method: 'GET', url, headers: { cookie: trainee } });
+    expect(missing.statusCode).toBe(404);
+
+    geo.terrain.set('s1', {
+      rows: 2,
+      cols: 2,
+      bbox: { south: 1, west: 1, north: 2, east: 2 },
+      elevations: [10, 20, 30, 40],
+    });
+    for (const cookie of [trainee, instructor]) {
+      const res = await f.inject({ method: 'GET', url, headers: { cookie } });
+      expect(res.statusCode).toBe(200);
+      expect(terrainGridSchema.parse(res.json()).elevations).toEqual([10, 20, 30, 40]);
+    }
   });
 });
