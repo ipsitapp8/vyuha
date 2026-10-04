@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { apiErrorCodeSchema } from './errors';
-import { channelSchema, latLonSchema, paceDefaultsSchema, unitStatusSchema } from './scenario';
+import {
+  areaBoundsSchema,
+  channelSchema,
+  latLonSchema,
+  paceDefaultsSchema,
+  unitStatusSchema,
+} from './scenario';
 
 // ---- Sessions (REST) ---------------------------------------------------------------------
 
@@ -27,7 +33,10 @@ export const createTeamBodySchema = z.object({
   pace: paceDefaultsSchema.optional(),
 });
 export const updateTeamBodySchema = z
-  .object({ name: z.string().trim().min(1).max(40).optional(), pace: paceDefaultsSchema.optional() })
+  .object({
+    name: z.string().trim().min(1).max(40).optional(),
+    pace: paceDefaultsSchema.optional(),
+  })
   .refine((b) => b.name !== undefined || b.pace !== undefined, { message: 'Nothing to update' });
 export const updatePaceBodySchema = z.object({ pace: paceDefaultsSchema });
 export const assignPlayerBodySchema = z
@@ -58,6 +67,7 @@ export const lobbyViewSchema = z.object({
     tick: z.number().int().min(0),
     scenarioId: z.string(),
     scenarioTitle: z.string(),
+    areaBounds: areaBoundsSchema,
     createdAt: z.string(),
   }),
   teams: z.array(z.object({ id: z.string(), name: z.string(), pace: paceDefaultsSchema })),
@@ -72,7 +82,9 @@ export const lobbyViewSchema = z.object({
     }),
   ),
   /** Friendly units that can be assigned to players. */
-  units: z.array(z.object({ id: z.string(), name: z.string(), type: z.string(), domain: z.string() })),
+  units: z.array(
+    z.object({ id: z.string(), name: z.string(), type: z.string(), domain: z.string() }),
+  ),
 });
 export type LobbyView = z.infer<typeof lobbyViewSchema>;
 
@@ -182,7 +194,11 @@ export const sessionStatusEventSchema = z.object({
 export type SessionStatusEvent = z.infer<typeof sessionStatusEventSchema>;
 
 export const joinAckSchema = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), role: z.enum(['INSTRUCTOR', 'TRAINEE']), playerId: z.string().nullable() }),
+  z.object({
+    ok: z.literal(true),
+    role: z.enum(['INSTRUCTOR', 'TRAINEE']),
+    playerId: z.string().nullable(),
+  }),
   z.object({
     ok: z.literal(false),
     error: z.object({ code: apiErrorCodeSchema, message: z.string() }),
@@ -241,7 +257,9 @@ export const perceivedStateSchema = z.object({
       ageTicks: z.number(),
       source: z.string(),
       via: z.union([channelSchema, z.literal('DIRECT')]),
-      grade: z.object({ reliability: reliabilitySchema, credibility: credibilitySchema }).nullable(),
+      grade: z
+        .object({ reliability: reliabilitySchema, credibility: credibilitySchema })
+        .nullable(),
     }),
   ),
   inbox: z.array(
@@ -256,6 +274,7 @@ export const perceivedStateSchema = z.object({
       position: pointNullable,
       requiresAuth: z.boolean(),
       authState: z.enum(['NONE', 'PENDING', 'VERIFIED', 'FAILED']),
+      authResolvesAtTick: z.number().nullable(),
     }),
   ),
   comms: z.object({

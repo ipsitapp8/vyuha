@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
 import { joinSessionBodySchema, type JoinSessionBody } from '@vyuha/shared';
 import { AppHeader } from '@/components/AppHeader';
 import { FormField } from '@/components/FormField';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/auth/AuthContext';
-import { api, ApiRequestError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { apiErrorText, validationText } from '@/lib/messages';
 
 export function TraineeHome() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -25,7 +28,7 @@ export function TraineeHome() {
       const joined = await api.joinSession(code);
       navigate(`/session/${joined.code}`);
     } catch (err) {
-      setSubmitError(err instanceof ApiRequestError ? err.message : 'Could not join. Try again.');
+      setSubmitError(apiErrorText(t, err));
     }
   });
 
@@ -33,21 +36,21 @@ export function TraineeHome() {
     <>
       <AppHeader />
       <main className="mx-auto max-w-md px-4 py-6">
-        <h1 className="mb-1 text-2xl font-semibold">Welcome, {user?.name}</h1>
-        <p className="mb-6 text-muted-foreground">
-          Enter the 6-character code your instructor gave you.
-        </p>
+        <h1 className="mb-1 text-2xl font-semibold">
+          {t('home.welcome', { name: user?.name ?? '' })}
+        </h1>
+        <p className="mb-6 text-muted-foreground">{t('home.enterCode')}</p>
         <form
           onSubmit={onSubmit}
           noValidate
           className="flex flex-col gap-4 rounded-lg border border-border bg-secondary p-4"
         >
           <FormField
-            label="Session code"
+            label={t('home.codeLabel')}
             autoComplete="off"
             maxLength={6}
             className="h-12 rounded-md border border-border bg-background px-3 text-center font-mono text-2xl uppercase tracking-[0.4em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            error={errors.code?.message}
+            error={validationText(t, errors.code?.message)}
             {...register('code')}
           />
           {submitError ? (
@@ -56,7 +59,7 @@ export function TraineeHome() {
             </p>
           ) : null}
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Joining…' : 'Join exercise'}
+            {isSubmitting ? t('home.joining') : t('home.join')}
           </Button>
         </form>
       </main>

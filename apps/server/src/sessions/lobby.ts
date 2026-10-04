@@ -93,6 +93,7 @@ export class LobbyService {
         tick: session.currentTick,
         scenarioId: session.scenarioId,
         scenarioTitle: session.scenarioTitle,
+        areaBounds: def.areaBounds,
         createdAt: session.createdAt.toISOString(),
       },
       teams: teams.map((t) => ({ id: t.id, name: t.name, pace: t.pace })),

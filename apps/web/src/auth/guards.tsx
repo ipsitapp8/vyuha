@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { Role } from '@vyuha/shared';
 import { Button } from '@/components/ui/button';
 import { useAuth } from './AuthContext';
@@ -17,6 +18,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 /** Gate: renders children only for signed-in users with an allowed role. */
 export function RequireRole({ role }: { role: Role }) {
+  const { t } = useTranslation();
   const { status, user, retry } = useAuth();
   const location = useLocation();
 
@@ -24,7 +26,7 @@ export function RequireRole({ role }: { role: Role }) {
     return (
       <Centered>
         <p role="status" className="text-muted-foreground">
-          Loading…
+          {t('common.loading')}
         </p>
       </Centered>
     );
@@ -33,9 +35,9 @@ export function RequireRole({ role }: { role: Role }) {
     return (
       <Centered>
         <p role="alert" className="text-red-400">
-          Could not reach the VYUHA server.
+          {t('common.serverUnreachable')}
         </p>
-        <Button onClick={retry}>Retry</Button>
+        <Button onClick={retry}>{t('common.retry')}</Button>
       </Centered>
     );
   }
@@ -46,12 +48,13 @@ export function RequireRole({ role }: { role: Role }) {
 
 /** Gate for /login and /register: signed-in users go straight to their home page. */
 export function GuestOnly() {
+  const { t } = useTranslation();
   const { status, user } = useAuth();
   if (status === 'loading') {
     return (
       <Centered>
         <p role="status" className="text-muted-foreground">
-          Loading…
+          {t('common.loading')}
         </p>
       </Centered>
     );

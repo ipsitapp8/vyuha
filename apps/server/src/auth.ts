@@ -15,6 +15,7 @@ import {
   type AuthResponse,
   type PublicUser,
   type Role,
+  type SessionResponse,
 } from '@vyuha/shared';
 import type { Config } from './config';
 import { sendError, sendValidationError } from './errors';
@@ -159,6 +160,16 @@ export function registerAuth(app: FastifyInstance, config: Config, users: UserRe
   app.post('/auth/logout', async (_request, reply) => {
     reply.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
     return reply.status(204).send();
+  });
+
+  app.get('/auth/session', async (request, reply) => {
+    try {
+      const body: SessionResponse = { user: await resolveUser(request, config, users) };
+      return reply.send(body);
+    } catch (err) {
+      request.log.error({ err }, 'session lookup failed');
+      return sendError(reply, 500, 'INTERNAL_ERROR', 'Could not load the session');
+    }
   });
 
   app.get('/auth/me', async (request, reply) => {

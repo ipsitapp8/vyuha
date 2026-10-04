@@ -269,6 +269,8 @@ export interface PerceivedMessage {
   position: LatLon | null;
   requiresAuth: boolean;
   authState: AuthState;
+  /** While PENDING: the tick at which the authentication result arrives. */
+  authResolvesAtTick: number | null;
 }
 
 export interface PerceivedState {

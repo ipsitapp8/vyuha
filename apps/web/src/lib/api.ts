@@ -7,6 +7,7 @@ import {
   lobbyViewSchema,
   scenarioGeoResponseSchema,
   scenarioListResponseSchema,
+  sessionResponseSchema,
   sessionListResponseSchema,
   type AssignPlayerBody,
   type IngestJob,
@@ -68,12 +69,7 @@ async function request<S extends z.ZodType>(
 
 export const api = {
   async me(): Promise<PublicUser | null> {
-    try {
-      return (await request('/auth/me', authResponseSchema)).user;
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 401) return null;
-      throw err;
-    }
+    return (await request('/auth/session', sessionResponseSchema)).user;
   },
   async login(body: LoginBody): Promise<PublicUser> {
     return (await request('/auth/login', authResponseSchema, { method: 'POST', body })).user;

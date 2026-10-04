@@ -70,6 +70,7 @@ export function computePerceivedState(truth: TruthState, playerId: string): Perc
       position: m.position ? { ...m.position } : null,
       requiresAuth: m.kind === 'ORDER',
       authState: m.authState,
+      authResolvesAtTick: knowledge.auth.find((a) => a.messageId === m.id)?.resolveAtTick ?? null,
     }))
     .sort((a, b) => a.receivedTick - b.receivedTick || a.id.localeCompare(b.id));
 

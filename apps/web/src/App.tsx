@@ -3,7 +3,7 @@ import { GuestOnly, RequireRole } from './auth/guards';
 import { InstructorHome } from './pages/InstructorHome';
 import { ScenarioPage } from './pages/ScenarioPage';
 import { InstructorSessionPage } from './pages/InstructorSessionPage';
-import { TraineeSessionPage } from './pages/TraineeSessionPage';
+import { CockpitPage } from './cockpit/CockpitPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -24,7 +24,7 @@ export function App() {
       </Route>
       <Route element={<RequireRole role="TRAINEE" />}>
         <Route path="/trainee" element={<TraineeHome />} />
-        <Route path="/session/:code" element={<TraineeSessionPage />} />
+        <Route path="/session/:code" element={<CockpitPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

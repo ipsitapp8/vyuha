@@ -25,3 +25,100 @@ body {
     Roboto,
     sans-serif;
 }
+
+/* ---- Cockpit map markers ---- */
+.vy-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.vy-dot {
+  width: 16px;
+  height: 16px;
+  border: 2px solid;
+  border-radius: 9999px;
+}
+.vy-own .vy-dot {
+  background: #38bdf8;
+  border-color: #fff;
+  box-shadow: 0 0 0 4px rgb(56 189 248 / 0.35);
+}
+.vy-friendly .vy-dot {
+  background: transparent;
+  border-color: #60a5fa;
+}
+button.vy-contact {
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.vy-contact .vy-dot {
+  background: rgb(239 68 68 / 0.55);
+  border-color: #f87171;
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+.vy-contact.vy-low .vy-dot {
+  background: rgb(239 68 68 / 0.18);
+  border-style: dashed;
+}
+.vy-contact.vy-selected .vy-dot {
+  box-shadow: 0 0 0 3px #fde047;
+}
+.vy-contact:focus-visible .vy-dot {
+  outline: 2px solid #fde047;
+  outline-offset: 3px;
+}
+.vy-label {
+  padding: 1px 4px;
+  font-size: 11px;
+  color: #e5e7eb;
+  white-space: nowrap;
+  background: rgb(11 18 32 / 0.82);
+  border-radius: 3px;
+}
+.vy-frozen .vy-contact,
+.vy-frozen .vy-friendly {
+  filter: grayscale(1);
+}
+
+/* ---- Jamming static ---- */
+.vy-static {
+  /* Grey fractal noise at full alpha: visible on light map tiles and on the dark offline background. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: vy-static 0.35s steps(4) infinite;
+}
+@keyframes vy-static {
+  0% {
+    background-position: 0 0;
+  }
+  25% {
+    background-position: -60px 40px;
+  }
+  50% {
+    background-position: 30px -80px;
+  }
+  75% {
+    background-position: -90px -20px;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vy-static {
+    animation: none;
+  }
+}
+
+/* Small screens: labels would pile up, so contact labels show only for the selected contact. */
+@media (max-width: 640px) {
+  .vy-contact:not(.vy-selected) .vy-label {
+    display: none;
+  }
+  .vy-label {
+    font-size: 10px;
+  }
+}

@@ -1,0 +1,305 @@
+{
+  "app": {
+    "name": "VYUHA",
+    "tagline": "Virtual Yuddh-abhyas Under Hampered Awareness"
+  },
+  "common": {
+    "loading": "Loading…",
+    "retry": "Retry",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "language": "Language",
+    "back": "Back",
+    "close": "Close",
+    "cancel": "Cancel",
+    "genericError": "Something went wrong. Try again.",
+    "signOutFailed": "Could not sign out. Try again.",
+    "serverUnreachable": "Could not reach the VYUHA server.",
+    "pageNotFound": "Page not found"
+  },
+  "lang": {
+    "en": "English",
+    "hi": "हिन्दी"
+  },
+  "landing": {
+    "signIn": "Sign in"
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "signingIn": "Signing in…",
+    "newTrainee": "New trainee?",
+    "createAccount": "Create an account",
+    "createTrainee": "Create a trainee account",
+    "fullName": "Full name",
+    "creating": "Creating account…",
+    "alreadyRegistered": "Already registered?",
+    "signInLink": "Sign in"
+  },
+  "validation": {
+    "email": "Enter a valid email address",
+    "name": "Name must be at least 2 characters",
+    "passwordLength": "Password must be at least 8 characters",
+    "passwordLetter": "Password must contain a letter",
+    "passwordDigit": "Password must contain a digit",
+    "passwordRequired": "Password is required",
+    "code": "Session code is 6 letters/digits"
+  },
+  "errors": {
+    "NETWORK": "Cannot reach the VYUHA server. Check that it is running.",
+    "UNAUTHENTICATED": "Please sign in first.",
+    "FORBIDDEN": "You do not have access to this.",
+    "INVALID_CREDENTIALS": "Incorrect email or password.",
+    "EMAIL_TAKEN": "This email is already registered.",
+    "NOT_FOUND": "Not found.",
+    "SESSION_NOT_FOUND": "No session with that code.",
+    "SESSION_STATE": "That exercise has already started or ended.",
+    "NOT_IN_SESSION": "You are not part of this exercise.",
+    "RATE_LIMITED": "Too many actions, slow down.",
+    "GEO_UNAVAILABLE": "Terrain data is not available.",
+    "INTERNAL_ERROR": "Unexpected server error. Try again."
+  },
+  "roles": {
+    "PL_CDR": "Platoon Commander",
+    "SECTION_CDR": "Section Commander",
+    "EW_OFFICER": "EW Officer",
+    "ISR_OPERATOR": "ISR Operator",
+    "INSTRUCTOR": "Instructor",
+    "TRAINEE": "Trainee"
+  },
+  "channels": {
+    "VHF": "VHF radio",
+    "HF": "HF radio",
+    "SATCOM": "SATCOM",
+    "DATALINK": "Data-link",
+    "RUNNER": "Runner"
+  },
+  "actions": {
+    "ENGAGE": "Engage",
+    "HOLD": "Hold position",
+    "WITHDRAW": "Withdraw",
+    "REPOSITION": "Reposition",
+    "REPORT_UP": "Report up",
+    "COMPLY_ORDER": "Comply with order",
+    "IGNORE_ORDER": "Ignore order",
+    "REQUEST_SUPPORT": "Request support"
+  },
+  "unitTypes": {
+    "HQ": "Headquarters",
+    "INFANTRY_PLATOON": "Infantry platoon",
+    "INFANTRY_SECTION": "Infantry section",
+    "DRONE": "Drone",
+    "EW_DETACHMENT": "EW detachment",
+    "CYBER_CELL": "Cyber cell",
+    "RUNNER": "Runner",
+    "RECCE": "Recce party",
+    "MECH_INFANTRY_COMPANY": "Mech infantry company",
+    "MECH_INFANTRY_SECTION": "Mech infantry section",
+    "EW_JAMMER": "Jammer team",
+    "CYBER_TEAM": "Cyber team",
+    "CIVILIAN_CONVOY": "Civilian convoy",
+    "CIVILIAN_AIRCRAFT": "Civilian aircraft"
+  },
+  "home": {
+    "welcome": "Welcome, {{name}}",
+    "enterCode": "Enter the 6-character code your instructor gave you.",
+    "codeLabel": "Session code",
+    "join": "Join exercise",
+    "joining": "Joining…"
+  },
+  "age": {
+    "now": "just now",
+    "seconds": "{{n}}s ago",
+    "minutes": "{{n}}m ago",
+    "minutesSeconds": "{{m}}m {{s}}s ago"
+  },
+  "cockpit": {
+    "title": "Exercise",
+    "backHome": "← Trainee home",
+    "code": "Code",
+    "connecting": "Connecting to the exercise…",
+    "waitingFirst": "Waiting for your first update…",
+    "connection": {
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "reconnecting": "Reconnecting…",
+      "failed": "Connection failed"
+    },
+    "status": {
+      "LOBBY": "Lobby",
+      "RUNNING": "Running",
+      "PAUSED": "Paused",
+      "ENDED": "Ended"
+    },
+    "ended": "This exercise has ended. Your instructor will share the after action review.",
+    "paused": "EXERCISE PAUSED",
+    "exerciseTime": "Exercise time",
+    "strength": "Strength",
+    "lobby": {
+      "assignment": "Your assignment",
+      "assignmentValue": "Team {{team}} · Role {{role}} · Unit {{unit}}",
+      "waiting": "Waiting for the instructor to give you a team, a role and a unit.",
+      "pacePlan": "Your team's PACE comms plan",
+      "paceHelp": "Primary, Alternate, Contingency, Emergency: the order you fall back through when a channel fails.",
+      "paceSaveFailed": "Could not save the PACE plan.",
+      "here": "Who is here ({{count}})",
+      "you": "(you)",
+      "noTeam": "no team",
+      "noRole": "no role",
+      "startsWhen": "The exercise begins when your instructor starts it."
+    },
+    "pace": {
+      "primary": "Primary",
+      "alternate": "Alternate",
+      "contingency": "Contingency",
+      "emergency": "Emergency",
+      "distinct": "Each PACE slot needs a different channel.",
+      "save": "Save PACE plan",
+      "saving": "Saving…"
+    },
+    "tabs": {
+      "label": "Cockpit panels",
+      "comms": "Comms",
+      "reports": "Reports"
+    },
+    "map": {
+      "label": "Tactical map. Your unit, friendly last-known positions and reported contacts.",
+      "you": "You",
+      "friendly": "{{name}} (last known)",
+      "contact": "{{type}} · seen {{age}}",
+      "moveTool": "Move unit",
+      "isrTool": "Request ISR",
+      "cancelTool": "Cancel",
+      "moveHint": "Tap the map to set a destination for {{unit}}.",
+      "isrHint": "Tap the map where you want ISR coverage.",
+      "unitToMove": "Unit to move",
+      "frozen": "DATA-LINK LOST: contacts frozen at {{time}}",
+      "tilesOffline": "Map tiles unavailable: showing positions only.",
+      "legendYou": "You",
+      "legendFriendly": "Teammate (last known)",
+      "legendContact": "Reported contact",
+      "legendLow": "Low-confidence report (graded D–F)"
+    },
+    "radio": {
+      "title": "Radio",
+      "signal": "{{channel}} signal",
+      "active": "active",
+      "na": "n/a",
+      "pace": "PACE: {{p}} / {{a}} / {{c}} / {{e}}",
+      "switchPenalty": "Recently switched: messages are slower for a few seconds.",
+      "teamChannel": "Team channel",
+      "switch": "Switch channel",
+      "jammed": "Your active channel is badly degraded. Consider your PACE fallback."
+    },
+    "compose": {
+      "title": "Send a message",
+      "to": "To",
+      "channel": "Channel",
+      "message": "Message",
+      "send": "Send",
+      "nobody": "There is nobody else to message.",
+      "hint": "Messages can arrive late, garbled or not at all. The runner is slow but cannot be jammed."
+    },
+    "inbox": {
+      "title": "Inbox ({{count}})",
+      "empty": "No messages yet.",
+      "meta": "{{from}} via {{channel}} · sent {{sent}} · received {{received}}",
+      "delayed": "Delayed in transit ({{n}}s)",
+      "garbled": "Garbled: parts of this message may be corrupted"
+    },
+    "orders": {
+      "unverified": "Unverified order",
+      "pending": "Authenticating… {{n}}s",
+      "pendingUnknown": "Authenticating…",
+      "verified": "Verified genuine",
+      "failed": "FAILED: this order is not genuine",
+      "authenticate": "Authenticate"
+    },
+    "alert": {
+      "region": "Order alerts",
+      "newOrder": "New order from {{from}}",
+      "unverifiedWarn": "Orders can be forged. Authenticate before acting (takes about 15 s).",
+      "verifiedTitle": "Order verified genuine",
+      "failedTitle": "That order was FAKE",
+      "dismiss": "Dismiss"
+    },
+    "contacts": {
+      "title": "Reports ({{count}})",
+      "empty": "No contacts reported yet.",
+      "position": "Position",
+      "source": "Source",
+      "via": "via {{channel}}",
+      "own": "Own sensor",
+      "unknownSource": "Unknown source",
+      "reliability": "Source reliability",
+      "credibility": "Information credibility",
+      "save": "Save grade",
+      "regrade": "Regrade ({{grade}})",
+      "graded": "Your grade: {{grade}}",
+      "ungraded": "Not graded yet",
+      "decide": "Decide on this contact"
+    },
+    "admiralty": {
+      "reliability": {
+        "A": "A: Completely reliable",
+        "B": "B: Usually reliable",
+        "C": "C: Fairly reliable",
+        "D": "D: Not usually reliable",
+        "E": "E: Unreliable",
+        "F": "F: Cannot be judged"
+      },
+      "credibility": {
+        "1": "1: Confirmed by other sources",
+        "2": "2: Probably true",
+        "3": "3: Possibly true",
+        "4": "4: Doubtful",
+        "5": "5: Improbable",
+        "6": "6: Cannot be judged"
+      }
+    },
+    "decision": {
+      "open": "Record a decision",
+      "title": "Record a decision",
+      "action": "Action",
+      "contact": "About contact (optional)",
+      "order": "Based on order (optional)",
+      "none": "— none —",
+      "confidence": "Confidence: {{value}}%",
+      "rationale": "Rationale (at least 10 characters)",
+      "rationaleShort": "Write at least 10 characters.",
+      "submit": "Submit decision",
+      "recorded": "Decision recorded."
+    },
+    "notices": {
+      "region": "Recent notices",
+      "rejected": "Refused: {{reason}}",
+      "authResolved": "Authentication result: {{result}}",
+      "channelSwitched": "Team switched to {{channel}}",
+      "arrived": "A unit reached its destination",
+      "isr": "ISR tasked",
+      "moveOrdered": "Move order accepted"
+    },
+    "degradation": {
+      "jammed": "JAMMED",
+      "frozen": "PICTURE FROZEN"
+    }
+  },
+  "reasons": {
+    "unknownPlayer": "unknown player",
+    "unitOutOfAction": "your unit is out of action",
+    "invalidRecipient": "invalid recipient",
+    "messageLength": "message must be 1-500 characters",
+    "cannotCommand": "you cannot command that unit",
+    "outOfArea": "destination outside the exercise area",
+    "cannotMove": "unit cannot move",
+    "noIsr": "no ISR asset on your team",
+    "unknownContact": "unknown contact",
+    "noSuchOrder": "no such order",
+    "alreadyAuth": "already authenticated or pending",
+    "alreadyChannel": "already on that channel",
+    "confidenceRange": "confidence must be 0-100",
+    "rationaleShort": "rationale must be at least 10 characters",
+    "unknownMessage": "unknown message"
+  }
+}

@@ -32,4 +32,8 @@ export type PublicUser = z.infer<typeof publicUserSchema>;
 export const authResponseSchema = z.object({ user: publicUserSchema });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 
+/** GET /auth/session: always 200, `user` is null when nobody is signed in (no console-noisy 401). */
+export const sessionResponseSchema = z.object({ user: publicUserSchema.nullable() });
+export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+
 export const AUTH_COOKIE_NAME = 'vyuha_token';

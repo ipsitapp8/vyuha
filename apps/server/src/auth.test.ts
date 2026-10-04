@@ -4,6 +4,7 @@ import {
   apiErrorSchema,
   authResponseSchema,
   scenarioListResponseSchema,
+  sessionResponseSchema,
 } from '@vyuha/shared';
 import { buildApp, type App } from './app';
 import { hashPassword } from './auth';
@@ -111,6 +112,30 @@ describe('auth', () => {
     });
     expect(a.statusCode).toBe(401);
     expect(b.json()).toEqual(a.json());
+  });
+
+  it('/auth/session answers 200 with null when signed out, and the user when signed in', async () => {
+    const f = await setup();
+    const anon = await f.inject({ method: 'GET', url: '/auth/session' });
+    expect(anon.statusCode).toBe(200);
+    expect(sessionResponseSchema.parse(anon.json())).toEqual({ user: null });
+    const login = await f.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email: 'i@vyuha.local', password: 'Vyuha@123' },
+    });
+    const me = await f.inject({
+      method: 'GET',
+      url: '/auth/session',
+      headers: { cookie: cookieOf(login) },
+    });
+    expect(sessionResponseSchema.parse(me.json()).user?.role).toBe('INSTRUCTOR');
+    const bad = await f.inject({
+      method: 'GET',
+      url: '/auth/session',
+      headers: { cookie: `${AUTH_COOKIE_NAME}=junk` },
+    });
+    expect(sessionResponseSchema.parse(bad.json())).toEqual({ user: null });
   });
 
   it('rejects /auth/me without a cookie or with a tampered token', async () => {

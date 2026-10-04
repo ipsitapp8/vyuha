@@ -93,6 +93,7 @@ describe('spoofed orders and authentication', () => {
       9: [{ type: 'AUTHENTICATE', playerId: 'p-pl', messageId: id }],
     });
     expect(computePerceivedState(start.state, 'p-pl').inbox[0]?.authState).toBe('PENDING');
+    expect(computePerceivedState(start.state, 'p-pl').inbox[0]?.authResolvesAtTick).toBe(9 + 15);
     const early = run(start.state, 13);
     expect(computePerceivedState(early.state, 'p-pl').inbox[0]?.authState).toBe('PENDING');
     const done = run(early.state, 3);

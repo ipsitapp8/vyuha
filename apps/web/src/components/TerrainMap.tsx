@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Map as MapLibreMap, NavigationControl, type StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import '@/lib/maplibre';
 import { elevationRange } from '@vyuha/engine';
 import type { AreaBounds, TerrainGridDto } from '@vyuha/shared';
 import { elevationColor } from '@/lib/terrainColor';
