@@ -2,27 +2,27 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { APP_NAME, loginBodySchema, type LoginBody } from '@vyuha/shared';
+import { APP_NAME, registerBodySchema, type RegisterBody } from '@vyuha/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { homePathFor } from '@/auth/guards';
 import { FormField } from '@/components/FormField';
 import { Button } from '@/components/ui/button';
 import { ApiRequestError } from '@/lib/api';
 
-export function LoginPage() {
-  const { login } = useAuth();
+export function RegisterPage() {
+  const { register: registerUser } = useAuth();
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginBody>({ resolver: zodResolver(loginBodySchema) });
+  } = useForm<RegisterBody>({ resolver: zodResolver(registerBodySchema) });
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      const user = await login(values);
+      const user = await registerUser(values);
       navigate(homePathFor(user.role), { replace: true });
     } catch (err) {
       setSubmitError(
@@ -37,7 +37,13 @@ export function LoginPage() {
         <h1 className="text-center text-3xl font-semibold tracking-widest text-primary">
           {APP_NAME}
         </h1>
-        <h2 className="text-center text-muted-foreground">Sign in</h2>
+        <h2 className="text-center text-muted-foreground">Create a trainee account</h2>
+        <FormField
+          label="Full name"
+          autoComplete="name"
+          error={errors.name?.message}
+          {...register('name')}
+        />
         <FormField
           label="Email"
           type="email"
@@ -48,7 +54,7 @@ export function LoginPage() {
         <FormField
           label="Password"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           error={errors.password?.message}
           {...register('password')}
         />
@@ -58,12 +64,12 @@ export function LoginPage() {
           </p>
         ) : null}
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isSubmitting ? 'Creating account…' : 'Create account'}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          New trainee?{' '}
-          <Link className="text-primary underline" to="/register">
-            Create an account
+          Already registered?{' '}
+          <Link className="text-primary underline" to="/login">
+            Sign in
           </Link>
         </p>
       </form>

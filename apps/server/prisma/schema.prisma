@@ -6,3 +6,149 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Role {
+  INSTRUCTOR
+  TRAINEE
+}
+
+enum SessionStatus {
+  LOBBY
+  RUNNING
+  PAUSED
+  ENDED
+}
+
+enum PlayerRole {
+  PL_CDR
+  SECTION_CDR
+  EW_OFFICER
+  ISR_OPERATOR
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime   @default(now())
+  scenarios    Scenario[]
+  players      Player[]
+}
+
+model Scenario {
+  id           String           @id @default(cuid())
+  title        String
+  description  String
+  areaBounds   Json
+  seed         Int
+  msel         Json
+  initialUnits Json
+  paceDefaults Json
+  createdById  String
+  createdBy    User             @relation(fields: [createdById], references: [id])
+  createdAt    DateTime         @default(now())
+  terrainGrid  TerrainGrid?
+  weather      WeatherSnapshot?
+  sessions     Session[]
+}
+
+model TerrainGrid {
+  scenarioId String   @id
+  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  rows       Int
+  cols       Int
+  bbox       Json
+  elevations Float[]
+}
+
+model WeatherSnapshot {
+  scenarioId      String   @id
+  scenario        Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  visibilityM     Float
+  precipitationMm Float
+  windKph         Float
+  fetchedAt       DateTime @default(now())
+}
+
+model Session {
+  id                 String         @id @default(cuid())
+  scenarioId         String
+  scenario           Scenario       @relation(fields: [scenarioId], references: [id])
+  code               String         @unique
+  status             SessionStatus  @default(LOBBY)
+  startedAt          DateTime?
+  endedAt            DateTime?
+  degradationProfile Json
+  teams              Team[]
+  players            Player[]
+  events             SessionEvent[]
+  decisions          Decision[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name      String
+  pacePlan  Json
+  players   Player[]
+}
+
+model Player {
+  id           String        @id @default(cuid())
+  sessionId    String
+  session      Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teamId       String?
+  team         Team?         @relation(fields: [teamId], references: [id])
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  role         PlayerRole?
+  unitId       String?
+  decisions    Decision[]
+  reportGrades ReportGrade[]
+
+  @@unique([sessionId, userId])
+}
+
+model SessionEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tick      Int
+  type      String
+  payload   Json
+  visibleTo String[]
+
+  @@index([sessionId, tick])
+}
+
+model Decision {
+  id                String  @id @default(cuid())
+  sessionId         String
+  session           Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  playerId          String
+  player            Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  tick              Int
+  actionType        String
+  payload           Json
+  confidence        Int
+  rationale         String
+  perceivedSnapshot Json
+  truthSnapshot     Json
+  latencyMs         Int
+
+  @@index([sessionId, tick])
+}
+
+model ReportGrade {
+  id                String @id @default(cuid())
+  playerId          String
+  player            Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  reportId          String
+  gradedReliability String
+  gradedCredibility Int
+  trueReliability   String
+  trueCredibility   Int
+}

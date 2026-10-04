@@ -12,14 +12,17 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@radix-ui/react-slot": "^1.3.3",
     "@vyuha/shared": "workspace:^",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "18",
     "react-dom": "18",
+    "react-hook-form": "^7.89.0",
     "react-router-dom": "6",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/react": "18",

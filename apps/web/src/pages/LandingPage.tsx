@@ -8,7 +8,7 @@ export function LandingPage() {
       <h1 className="text-5xl font-bold tracking-[0.3em] text-primary sm:text-7xl">{APP_NAME}</h1>
       <p className="max-w-xl text-lg text-muted-foreground">{APP_TAGLINE}</p>
       <Button asChild size="lg">
-        <Link to="/login">Login</Link>
+        <Link to="/login">Sign in</Link>
       </Button>
     </main>
   );
