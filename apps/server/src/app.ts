@@ -61,7 +61,13 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
     // The API serves JSON, CSV and PDF downloads to a separate web origin.
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
-  await fastify.register(cors, { origin: origins, credentials: true });
+  await fastify.register(cors, {
+    origin: origins,
+    credentials: true,
+    // @fastify/cors v11 defaults to GET, HEAD and POST only, which makes browsers block the app's
+    // PUT, PATCH and DELETE calls (delete team, assign player, save PACE plan, save MSEL).
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  });
   await fastify.register(cookie);
 
   fastify.setErrorHandler((err: { statusCode?: number }, request, reply) => {

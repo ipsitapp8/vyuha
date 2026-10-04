@@ -47,6 +47,32 @@ describe('HTTP hardening', () => {
     expect(evil.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  it('lets the web app use every method it calls, so browsers do not block delete, assign or PACE saves', async () => {
+    app = await buildApp(testConfig, createMemoryDeps().deps);
+    for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+      const res = await app.fastify.inject({
+        method: 'OPTIONS',
+        url: '/sessions/s1/teams/t1',
+        headers: {
+          origin: 'http://localhost:5173',
+          'access-control-request-method': method,
+          'access-control-request-headers': 'content-type',
+        },
+      });
+      expect(res.statusCode, method).toBe(204);
+      const allowed = String(res.headers['access-control-allow-methods']).split(/\s*,\s*/);
+      expect(allowed, `preflight for ${method}`).toContain(method);
+      expect(res.headers['access-control-allow-credentials']).toBe('true');
+    }
+    // and still not for a stranger's origin
+    const evil = await app.fastify.inject({
+      method: 'OPTIONS',
+      url: '/sessions/s1/teams/t1',
+      headers: { origin: 'https://evil.example', 'access-control-request-method': 'DELETE' },
+    });
+    expect(evil.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
   it('rejects oversized bodies with a typed 413 instead of a 500', async () => {
     app = await buildApp(testConfig, createMemoryDeps().deps);
     const res = await app.fastify.inject({
