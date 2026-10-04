@@ -55,12 +55,12 @@ export function PaceEditor({ pace, disabled, onSave }: Props) {
         ))}
       </div>
       {!distinct ? (
-        <p role="alert" className="mt-2 text-sm text-red-400">
+        <p role="alert" className="mt-2 text-sm text-red-700">
           {t('cockpit.pace.distinct')}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-red-400">
+        <p role="alert" className="mt-2 text-sm text-red-700">
           {error}
         </p>
       ) : null}

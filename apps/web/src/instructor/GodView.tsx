@@ -88,7 +88,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
       {notice ? (
         <p
           role={notice.kind === 'error' ? 'alert' : 'status'}
-          className={notice.kind === 'error' ? 'text-red-400' : 'text-primary'}
+          className={notice.kind === 'error' ? 'text-red-700' : 'text-primary'}
         >
           {notice.text}
         </p>

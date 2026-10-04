@@ -54,7 +54,7 @@ export function TraineeHome() {
             {...register('code')}
           />
           {submitError ? (
-            <p role="alert" className="text-sm text-red-400">
+            <p role="alert" className="text-sm text-red-700">
               {submitError}
             </p>
           ) : null}

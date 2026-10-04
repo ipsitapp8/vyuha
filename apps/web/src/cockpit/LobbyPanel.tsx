@@ -36,7 +36,7 @@ export function LobbyPanel({ lobby, playerId }: { lobby: LobbyView; playerId: st
           <h2 className="mb-1 font-semibold">{t('cockpit.lobby.pacePlan')}</h2>
           <p className="mb-3 text-sm text-muted-foreground">{t('cockpit.lobby.paceHelp')}</p>
           {error ? (
-            <p role="alert" className="mb-2 text-red-400">
+            <p role="alert" className="mb-2 text-red-700">
               {error}
             </p>
           ) : null}

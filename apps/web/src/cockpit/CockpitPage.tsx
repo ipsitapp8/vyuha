@@ -71,7 +71,7 @@ export function CockpitPage() {
 
   return (
     <>
-      <AppHeader />
+      <AppHeader compact />
       <main className="mx-auto max-w-5xl px-4 py-6">
         <Link to="/trainee" className="text-sm text-primary underline">
           {t('cockpit.backHome')}
@@ -85,7 +85,7 @@ export function CockpitPage() {
           {status ? ` · ${t(`cockpit.status.${status}`)}` : ''}
         </p>
         {live.error ? (
-          <p role="alert" className="mt-3 text-red-400">
+          <p role="alert" className="mt-3 text-red-700">
             {live.error}
           </p>
         ) : null}
@@ -166,7 +166,7 @@ function Cockpit({
 
   return (
     <div className="flex h-dvh flex-col">
-      <AppHeader />
+      <AppHeader compact />
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border px-4 py-2 text-sm">
         <p className="font-semibold">
           {perceived.self.name} · {t(`roles.${perceived.role}`)}
@@ -193,7 +193,7 @@ function Cockpit({
         </p>
       ) : null}
       {live.error ? (
-        <p role="alert" className="bg-red-950 px-4 py-1 text-sm text-red-300">
+        <p role="alert" className="bg-red-50 px-4 py-1 text-sm text-red-800">
           {live.error}
         </p>
       ) : null}
@@ -253,7 +253,7 @@ function Cockpit({
             className="min-h-0 flex-1 overflow-y-auto p-4"
           >
             {feedback ? (
-              <p role="alert" className="mb-3 rounded-md bg-red-950 p-2 text-sm text-red-300">
+              <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-800">
                 {feedback}
               </p>
             ) : null}
@@ -261,7 +261,7 @@ function Cockpit({
               <ul
                 aria-label={t('cockpit.notices.region')}
                 aria-live="polite"
-                className="mb-3 text-sm text-amber-300"
+                className="mb-3 text-sm text-amber-800"
               >
                 {notices.map((e, i) => (
                   <li key={`${e.tick}-${e.type}-${i}`}>

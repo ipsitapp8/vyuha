@@ -23,7 +23,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
           {...props}
         />
         {error ? (
-          <p id={`${inputId}-error`} role="alert" className="text-sm text-red-400">
+          <p id={`${inputId}-error`} role="alert" className="text-sm text-red-700">
             {error}
           </p>
         ) : null}

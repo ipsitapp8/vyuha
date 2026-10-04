@@ -3,27 +3,111 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 30% 8%;
-  --foreground: 210 20% 94%;
-  --primary: 142 60% 45%;
-  --primary-foreground: 222 30% 8%;
-  --secondary: 222 20% 16%;
-  --secondary-foreground: 210 20% 94%;
-  --muted: 222 20% 16%;
-  --muted-foreground: 215 15% 65%;
-  --border: 222 15% 24%;
-  --radius: 0.5rem;
+  /* Government-portal palette: white page, navy bands, saffron and green only as accents. */
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --primary: 216 76% 26%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 25% 32%;
+  --border: 214 22% 72%;
+  --navy: 218 70% 20%;
+  --saffron: 28 100% 50%;
+  --india-green: 135 80% 24%;
+  --focus: 216 90% 45%;
+  --radius: 0.25rem;
+}
+
+/* High contrast (the "A" contrast switch in the header): black page, yellow actions, white text. */
+.hc {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --primary: 50 100% 55%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 7%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 7%;
+  --muted-foreground: 0 0% 86%;
+  --border: 0 0% 72%;
+  --navy: 0 0% 0%;
+  --focus: 50 100% 55%;
+}
+.hc .text-red-700,
+.hc .text-red-800 {
+  color: #ff9a9a;
+}
+.hc .text-amber-700,
+.hc .text-amber-800 {
+  color: #ffd166;
+}
+.hc .text-green-700 {
+  color: #7dffa1;
+}
+.hc .text-sky-700 {
+  color: #8fd3ff;
+}
+.hc .bg-red-50,
+.hc .bg-amber-50,
+.hc .bg-emerald-50 {
+  background-color: #1a1a1a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
   @apply bg-background text-foreground antialiased;
   margin: 0;
+  line-height: 1.55;
   font-family:
+    'Segoe UI',
+    'Noto Sans',
+    'Noto Sans Devanagari',
+    Arial,
     system-ui,
     -apple-system,
-    'Segoe UI',
     Roboto,
     sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* A clear keyboard focus everywhere, as government accessibility guidelines ask. */
+:focus-visible {
+  outline: 3px solid hsl(var(--focus));
+  outline-offset: 2px;
+}
+
+/* Skip link: first thing a keyboard or screen reader user reaches. */
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--navy));
+  border: 2px solid hsl(var(--primary-foreground));
+}
+.skip-link:focus {
+  top: 0.5rem;
 }
 
 /* ---- Cockpit map markers ---- */

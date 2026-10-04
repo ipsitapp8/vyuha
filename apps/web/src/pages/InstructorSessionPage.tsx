@@ -75,7 +75,7 @@ export function InstructorSessionPage() {
           </p>
         ) : null}
         {loadError ? (
-          <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
+          <div role="alert" className="mt-4 flex items-center gap-3 text-red-700">
             <span>{loadError}</span>
             <Button
               variant="outline"
@@ -116,12 +116,12 @@ export function InstructorSessionPage() {
             </header>
 
             {live.error ? (
-              <p role="alert" className="mt-3 text-red-400">
+              <p role="alert" className="mt-3 text-red-700">
                 {live.error}
               </p>
             ) : null}
             {actionError ? (
-              <p role="alert" className="mt-3 text-red-400">
+              <p role="alert" className="mt-3 text-red-700">
                 {actionError}
               </p>
             ) : null}

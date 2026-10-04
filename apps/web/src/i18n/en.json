@@ -22,7 +22,38 @@
     "hi": "हिन्दी"
   },
   "landing": {
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "createAccount": "Create an account",
+    "heroTitle": "Decide right when communications go wrong",
+    "heroBody": "VYUHA gives each commander a different, degraded view of one hidden battle. Messages arrive late, garbled or not at all, and some orders are fake. Trainees record what they decided, how sure they were and why. The instructor then reviews what each of them saw against what was true.",
+    "howTitle": "How an exercise works",
+    "steps": {
+      "1": {
+        "title": "Build the scenario",
+        "body": "The instructor picks the map, the units and the events that break communications."
+      },
+      "2": {
+        "title": "Hidden ground truth",
+        "body": "The server keeps the one real battle. Trainees never see it."
+      },
+      "3": {
+        "title": "Break the comms",
+        "body": "Each message is delayed, dropped, corrupted or faked."
+      },
+      "4": {
+        "title": "Decide under doubt",
+        "body": "The trainee acts with a confidence percentage and a reason."
+      },
+      "5": {
+        "title": "Replay and learn",
+        "body": "The After Action Review shows what you saw against what was true."
+      }
+    },
+    "whoTitle": "Who it is for",
+    "instructorTitle": "Instructors",
+    "instructorBody": "Run the exercise live with a view of the real battle beside every trainee’s picture, add events as it unfolds, then export the After Action Review as PDF, CSV or JSON.",
+    "traineeTitle": "Trainees",
+    "traineeBody": "Join with the 6-character code from your instructor, work from your own map and messages, and see afterwards how your judgement compares with the truth."
   },
   "auth": {
     "signInTitle": "Sign in",
@@ -319,8 +350,18 @@
       "loadingSessions": "Loading sessions…",
       "sessionsFailed": "Could not load sessions.",
       "noSessions": "No sessions yet. Open a scenario and choose \"Create exercise session\".",
-      "sessionRow": "{{status}} · {{count}} trainees",
-      "open": "Open"
+      "open": "Open",
+      "traineeCount_one": "{{count}} trainee",
+      "traineeCount_other": "{{count}} trainees",
+      "showAll": "Show all {{count}} sessions",
+      "showFewer": "Show only the latest {{count}}",
+      "table": {
+        "scenario": "Scenario",
+        "code": "Code",
+        "status": "Status",
+        "trainees": "Trainees",
+        "actions": "Actions"
+      }
     },
     "scenario": {
       "back": "← All scenarios",
@@ -748,6 +789,27 @@
     "nav": {
       "instructor": "Trainee progress",
       "trainee": "My progress"
+    }
+  },
+  "shell": {
+    "skip": "Skip to main content",
+    "textSize": "Text size",
+    "smaller": "Decrease text size",
+    "defaultSize": "Default text size",
+    "larger": "Increase text size",
+    "contrast": "High contrast",
+    "siteNote": "Training prototype · Smart India Hackathon 2026 · Problem Statement 26248",
+    "subtitle": "Decision-making trainer for degraded communication environments",
+    "mainMenu": "Main menu",
+    "nav": {
+      "home": "Home",
+      "instructorHome": "Scenarios and sessions",
+      "traineeHome": "Join an exercise"
+    },
+    "footer": {
+      "about": "An immersive multi-domain decision-making trainer: commanders practise deciding when radio links are delayed, jammed or spoofed.",
+      "data": "Maps: OpenStreetMap contributors (ODbL). Terrain and weather: Copernicus GLO-90 via Open-Meteo. Scenario events are synthetic; no classified data is used.",
+      "notice": "This is a prototype built for the Smart India Hackathon 2026. It is not an official government website."
     }
   }
 }

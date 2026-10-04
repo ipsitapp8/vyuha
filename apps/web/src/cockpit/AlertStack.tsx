@@ -36,10 +36,10 @@ export function AlertStack({ alerts, pending, send }: Props) {
         const state = m.authState;
         const tone =
           state === 'FAILED'
-            ? 'border-red-500 bg-red-950/90'
+            ? 'border-red-500 bg-red-50/90'
             : state === 'VERIFIED'
-              ? 'border-primary bg-emerald-950/90'
-              : 'border-amber-400 bg-amber-950/90';
+              ? 'border-primary bg-emerald-50/90'
+              : 'border-amber-700 bg-amber-50/90';
         return (
           <div key={m.id} className={`rounded-lg border-2 p-3 text-sm shadow-lg ${tone}`}>
             <div className="flex items-start justify-between gap-2">

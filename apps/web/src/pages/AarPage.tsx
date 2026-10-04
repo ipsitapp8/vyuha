@@ -53,7 +53,7 @@ export function AarPage() {
           </p>
         ) : null}
         {error ? (
-          <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
+          <div role="alert" className="mt-4 flex items-center gap-3 text-red-700">
             <span>{error}</span>
             <Button
               variant="outline"
@@ -150,7 +150,7 @@ function Review({ summary }: { summary: AarSummary }) {
                     {p.gradingAccuracy === null ? '–' : pct(p.gradingAccuracy * 100)}
                   </td>
                   <td
-                    className={`p-1 text-right ${p.spoofActedCount > 0 ? 'font-semibold text-red-400' : ''}`}
+                    className={`p-1 text-right ${p.spoofActedCount > 0 ? 'font-semibold text-red-700' : ''}`}
                   >
                     {p.spoofActedCount}
                   </td>

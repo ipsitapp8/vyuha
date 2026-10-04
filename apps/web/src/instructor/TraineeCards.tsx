@@ -102,7 +102,7 @@ export function TraineeCards({ lobby, truth, watchedId, onWatch }: Props) {
                     : t('god.cards.brier', { value: m.brierScore.toFixed(2) })}
                 </dd>
                 <dt className="text-muted-foreground">{t('god.cards.spoofs')}</dt>
-                <dd className={m.spoofActedCount > 0 ? 'font-semibold text-red-400' : ''}>
+                <dd className={m.spoofActedCount > 0 ? 'font-semibold text-red-700' : ''}>
                   {m.spoofActedCount}
                 </dd>
                 <dt className="text-muted-foreground">{t('god.cards.switches')}</dt>

@@ -53,7 +53,7 @@ export function ProgressIndexPage() {
           </p>
         ) : null}
         {error ? (
-          <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
+          <div role="alert" className="mt-4 flex items-center gap-3 text-red-700">
             <span>{error}</span>
             <Button
               variant="outline"
@@ -166,7 +166,7 @@ export function ProgressPage() {
           </p>
         ) : null}
         {error ? (
-          <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
+          <div role="alert" className="mt-4 flex items-center gap-3 text-red-700">
             <span>{error}</span>
             <Button
               variant="outline"

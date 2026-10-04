@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ScenarioSummary, SessionListResponse } from '@vyuha/shared';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { apiErrorText } from '@/lib/messages';
+
+/** Sessions shown before "Show all": the newest ones are what an instructor is looking for. */
+const VISIBLE_SESSIONS = 8;
+
+const STATUS_STYLE: Record<SessionListResponse['sessions'][number]['status'], string> = {
+  RUNNING: 'border-green-700 bg-emerald-50 text-green-700',
+  LOBBY: 'border-amber-700 bg-amber-50 text-amber-800',
+  PAUSED: 'border-amber-700 bg-amber-50 text-amber-800',
+  ENDED: 'border-border bg-secondary text-muted-foreground',
+};
 
 type State =
   | { kind: 'loading' }
@@ -17,6 +27,22 @@ export function InstructorHome() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [sessions, setSessions] = useState<SessionListResponse['sessions'] | null>(null);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [creatingFor, setCreatingFor] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const createSession = async (scenarioId: string): Promise<void> => {
+    setCreatingFor(scenarioId);
+    setCreateError(null);
+    try {
+      const lobby = await api.createSession(scenarioId);
+      navigate(`/instructor/sessions/${lobby.session.id}`);
+    } catch (e) {
+      setCreateError(apiErrorText(t, e, t('instructor.scenario.createFailed')));
+      setCreatingFor(null);
+    }
+  };
 
   const fetchScenarios = useCallback(() => {
     api
@@ -52,20 +78,20 @@ export function InstructorHome() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-4xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-4 py-6">
         <h1 className="mb-1 text-2xl font-semibold">{t('instructor.home.title')}</h1>
-        <p className="mb-2 text-muted-foreground">{t('instructor.home.intro')}</p>
-        <p className="mb-6">
-          <Link className="text-primary underline" to="/progress">
-            {t('progress.nav.instructor')}
-          </Link>
-        </p>
+        <p className="mb-6 text-muted-foreground">{t('instructor.home.intro')}</p>
+        {createError ? (
+          <p role="alert" className="mb-4 text-red-700">
+            {createError}
+          </p>
+        ) : null}
 
         {state.kind === 'loading' ? (
           <p role="status">{t('instructor.home.loadingScenarios')}</p>
         ) : null}
         {state.kind === 'error' ? (
-          <div role="alert" className="flex items-center gap-3 text-red-400">
+          <div role="alert" className="flex items-center gap-3 text-red-700">
             <span>{state.message}</span>
             <Button variant="outline" onClick={retry}>
               {t('common.retry')}
@@ -95,6 +121,13 @@ export function InstructorHome() {
                     <dd>{s.seed}</dd>
                   </div>
                 </dl>
+                <div className="mt-4">
+                  <Button onClick={() => void createSession(s.id)} disabled={creatingFor !== null}>
+                    {creatingFor === s.id
+                      ? t('instructor.scenario.creating')
+                      : t('instructor.scenario.createSession')}
+                  </Button>
+                </div>
                 <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                   <Link className="text-primary underline" to={`/instructor/scenarios/${s.id}`}>
                     {t('instructor.home.openGeo')}
@@ -121,7 +154,7 @@ export function InstructorHome() {
 
         <h2 className="mb-2 mt-10 text-xl font-semibold">{t('instructor.home.sessionsTitle')}</h2>
         {sessionsError ? (
-          <p role="alert" className="text-red-400">
+          <p role="alert" className="text-red-700">
             {sessionsError}
           </p>
         ) : null}
@@ -132,37 +165,79 @@ export function InstructorHome() {
           <p className="text-muted-foreground">{t('instructor.home.noSessions')}</p>
         ) : null}
         {sessions && sessions.length > 0 ? (
-          <ul className="flex flex-col gap-2">
-            {sessions.map((s) => (
-              <li
-                key={s.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-secondary p-3"
+          <>
+            <div className="overflow-x-auto rounded border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-navy text-white">
+                  <tr>
+                    <th scope="col" className="p-2">
+                      {t('instructor.home.table.scenario')}
+                    </th>
+                    <th scope="col" className="p-2">
+                      {t('instructor.home.table.code')}
+                    </th>
+                    <th scope="col" className="p-2">
+                      {t('instructor.home.table.status')}
+                    </th>
+                    <th scope="col" className="p-2">
+                      {t('instructor.home.table.trainees')}
+                    </th>
+                    <th scope="col" className="p-2">
+                      <span className="sr-only">{t('instructor.home.table.actions')}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(showAll ? sessions : sessions.slice(0, VISIBLE_SESSIONS)).map((row) => (
+                    <tr
+                      key={row.id}
+                      className="border-t border-border odd:bg-background even:bg-secondary"
+                    >
+                      <td className="p-2 font-semibold">{row.scenarioTitle}</td>
+                      <td className="p-2 font-mono text-primary">{row.code}</td>
+                      <td className="p-2">
+                        <span
+                          className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[row.status]}`}
+                        >
+                          {t(`cockpit.status.${row.status}`)}
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        {t('instructor.home.traineeCount', { count: row.playerCount })}
+                      </td>
+                      <td className="p-2">
+                        <span className="flex justify-end gap-4">
+                          <Link
+                            className="text-primary underline"
+                            to={`/instructor/sessions/${row.id}`}
+                          >
+                            {t('instructor.home.open')}
+                          </Link>
+                          {row.status === 'ENDED' ? (
+                            <Link className="text-primary underline" to={`/aar/${row.id}`}>
+                              {t('aar.review')}
+                            </Link>
+                          ) : null}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {sessions.length > VISIBLE_SESSIONS ? (
+              <Button
+                variant="outline"
+                className="mt-3"
+                aria-expanded={showAll}
+                onClick={() => setShowAll((v) => !v)}
               >
-                <span>
-                  <strong>{s.scenarioTitle}</strong>{' '}
-                  <span className="font-mono text-primary">{s.code}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {' '}
-                    ·{' '}
-                    {t('instructor.home.sessionRow', {
-                      status: t(`cockpit.status.${s.status}`),
-                      count: s.playerCount,
-                    })}
-                  </span>
-                </span>
-                <span className="flex gap-4">
-                  <Link className="text-primary underline" to={`/instructor/sessions/${s.id}`}>
-                    {t('instructor.home.open')}
-                  </Link>
-                  {s.status === 'ENDED' ? (
-                    <Link className="text-primary underline" to={`/aar/${s.id}`}>
-                      {t('aar.review')}
-                    </Link>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
+                {showAll
+                  ? t('instructor.home.showFewer', { count: VISIBLE_SESSIONS })
+                  : t('instructor.home.showAll', { count: sessions.length })}
+              </Button>
+            ) : null}
+          </>
         ) : null}
       </main>
     </>

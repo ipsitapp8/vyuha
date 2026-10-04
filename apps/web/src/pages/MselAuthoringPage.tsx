@@ -144,7 +144,7 @@ export function MselAuthoringPage() {
           </p>
         ) : null}
         {loadError ? (
-          <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
+          <div role="alert" className="mt-4 flex items-center gap-3 text-red-700">
             <span>{loadError}</span>
             <Button
               variant="outline"
@@ -207,7 +207,7 @@ export function MselAuthoringPage() {
             {message ? (
               <p
                 role={message.kind === 'error' ? 'alert' : 'status'}
-                className={`mb-3 ${message.kind === 'error' ? 'text-red-400' : 'text-primary'}`}
+                className={`mb-3 ${message.kind === 'error' ? 'text-red-700' : 'text-primary'}`}
               >
                 {message.text}
               </p>
@@ -286,7 +286,7 @@ export function MselAuthoringPage() {
             )}
 
             {problems.length > 0 ? (
-              <div role="alert" className="mt-4 rounded-md bg-red-950 p-3 text-sm text-red-300">
+              <div role="alert" className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
                 <p className="font-semibold">{t('msel.problems')}</p>
                 <ul className="list-disc pl-5">
                   {problems.map((p) => (
@@ -315,7 +315,7 @@ export function MselAuthoringPage() {
                   >
                     {t('msel.discard')}
                   </Button>
-                  <span className="text-sm text-amber-400">{t('msel.unsaved')}</span>
+                  <span className="text-sm text-amber-700">{t('msel.unsaved')}</span>
                 </>
               ) : null}
             </div>

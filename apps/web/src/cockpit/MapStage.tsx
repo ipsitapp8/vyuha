@@ -162,14 +162,14 @@ export function MapStage({
         </li>
         <li className="flex items-center gap-2">
           <span
-            className="inline-block h-3 w-3 rotate-45 border-2 border-red-400 bg-red-500/50"
+            className="inline-block h-3 w-3 rotate-45 border-2 border-red-700 bg-red-500/50"
             aria-hidden="true"
           />
           {t('cockpit.map.legendContact')}
         </li>
         <li className="flex items-center gap-2">
           <span
-            className="inline-block h-3 w-3 rotate-45 border-2 border-dashed border-red-400"
+            className="inline-block h-3 w-3 rotate-45 border-2 border-dashed border-red-700"
             aria-hidden="true"
           />
           {t('cockpit.map.legendLow')}

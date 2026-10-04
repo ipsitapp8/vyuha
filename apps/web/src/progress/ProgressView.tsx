@@ -21,10 +21,10 @@ import {
   type ProgressMetricKey,
 } from './progressData';
 
-const GRID = '#334155';
-const AXIS = '#94a3b8';
-const LINE = '#4ade80';
-const TOOLTIP = { background: '#0f172a', border: '1px solid #334155', color: '#e2e8f0' };
+const GRID = '#d3dae6';
+const AXIS = '#475569';
+const LINE = '#15803d';
+const TOOLTIP = { background: '#ffffff', border: '1px solid #94a3b8', color: '#0f172a' };
 
 const fixed = (v: number | null, digits: number): string => (v === null ? '–' : v.toFixed(digits));
 
@@ -47,14 +47,14 @@ function MetricChart({
       ) : (
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+            <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 20, left: 0 }}>
               <CartesianGrid stroke={GRID} strokeDasharray="3 3" />
               <XAxis
                 dataKey="session"
                 stroke={AXIS}
                 tickLine={false}
                 allowDecimals={false}
-                label={{ value: t('progress.axisSession'), position: 'insideBottom', offset: -2 }}
+                label={{ value: t('progress.axisSession'), position: 'insideBottom', offset: -12 }}
               />
               <YAxis stroke={AXIS} tickLine={false} width={44} />
               <Tooltip
@@ -84,8 +84,8 @@ function MetricChart({
 
 const ARROW = { improving: '↓', worsening: '↑', flat: '→' } as const;
 const ARROW_TONE = {
-  improving: 'text-green-400',
-  worsening: 'text-red-400',
+  improving: 'text-green-700',
+  worsening: 'text-red-700',
   flat: 'text-muted-foreground',
 } as const;
 
@@ -130,7 +130,7 @@ export function ProgressView({ data }: { data: ProgressResponse }) {
           ) : (
             <>
               <p
-                className={`mt-2 text-4xl font-bold ${delay.changePct <= 0 ? 'text-green-400' : 'text-red-400'}`}
+                className={`mt-2 text-4xl font-bold ${delay.changePct <= 0 ? 'text-green-700' : 'text-red-700'}`}
               >
                 {delay.changePct > 0 ? '+' : ''}
                 {delay.changePct.toFixed(0)}%

@@ -98,7 +98,7 @@ export function LobbyEditor({ lobby, busy, teamName, setTeamName, run }: Props) 
                       void run(() => api.assignPlayer(sid, p.id, { unitId: v === NONE ? null : v }))
                     }
                   />
-                  <span className={ready ? 'text-sm text-primary' : 'text-sm text-amber-400'}>
+                  <span className={ready ? 'text-sm text-primary' : 'text-sm text-amber-700'}>
                     {ready ? t('god.lobby.ready') : t('god.lobby.incomplete')}
                   </span>
                 </li>

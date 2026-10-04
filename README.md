@@ -91,3 +91,12 @@ Test: `pnpm --filter @vyuha/server test` (AAR export and replay tests), `pnpm --
 When a session ends, the server computes five numbers per trainee from its event log and decisions and stores them in `SessionMetric`: average decision latency, latency under jamming (decisions taken while any channel was jammed 30% or more), Brier score, share of fake orders challenged with Authenticate, and report grading accuracy. `/progress/:userId` charts them across sessions, with a "3rd session vs 1st session" change in decision delay under jamming and a Brier trend arrow; with fewer than 2 sessions it says "Need 2+ sessions for a trend". An instructor sees every trainee (`/progress`), a trainee only themself. The AAR PDF adds a "Progress so far" section for trainees with 2+ sessions.
 
 **Demo history without faking anything:** `pnpm demo:history` plays three real Op Silent Ridge exercises through the normal lobby, session manager and metric recording, with three scripted bot trainees (`apps/server/src/demo`) who get faster and start authenticating the fake order. The engine scores what they did, so no metric is typed in by hand. Runs are deterministic. The bots are flagged `isDemoBot` and shown as "Demo bot" everywhere. Needs the database seeded (`pnpm db:migrate && pnpm db:seed`). `pnpm demo:history -- --reset` removes the bots' sessions and plays them again.
+
+## Interface and accessibility
+
+The web app follows the layout of an Indian government portal so it is familiar and easy to read: a utility bar with reader controls, a tricolour rule, the service name and purpose, a navy main menu for the signed-in role (instructor: scenarios and sessions, trainee progress; trainee: join an exercise, my progress) and a footer that states the data sources and that this is a prototype, not an official government website. It uses its own mark, not the State Emblem of India, whose use is restricted by law.
+
+- **Text size** A−, A, A+ (five steps) and a **high-contrast** theme, both remembered in the browser.
+- **Skip to main content** link, landmarks, a visible 3 px keyboard focus, and dark-on-light status colours chosen for contrast.
+- English and Hindi, and a layout that works down to phone width.
+- The trainee cockpit keeps a single slim header so the map and panels have the room.

@@ -20,8 +20,8 @@ export function learningText(t: TFunction, p: LearningPointDto): string {
 }
 
 const ICON = {
-  warn: { Icon: TriangleAlert, className: 'text-red-400' },
-  info: { Icon: Info, className: 'text-sky-400' },
+  warn: { Icon: TriangleAlert, className: 'text-red-700' },
+  info: { Icon: Info, className: 'text-sky-700' },
   good: { Icon: CircleCheck, className: 'text-primary' },
 } as const;
 

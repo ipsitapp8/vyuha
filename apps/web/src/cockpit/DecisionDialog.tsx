@@ -169,7 +169,7 @@ export function DecisionDialog({ perceived, initialContactId, onClose, send }: P
             />
           </label>
           {touched && !valid ? (
-            <p role="alert" className="-mt-2 text-sm text-red-400">
+            <p role="alert" className="-mt-2 text-sm text-red-700">
               {t('cockpit.decision.rationaleShort')}
             </p>
           ) : null}

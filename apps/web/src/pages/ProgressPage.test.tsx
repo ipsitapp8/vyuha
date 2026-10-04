@@ -228,7 +228,8 @@ describe('ProgressIndexPage', () => {
       ],
     });
     renderAt('/progress');
-    const rows = await screen.findAllByRole('listitem');
+    await screen.findByText('Bot One');
+    const rows = within(screen.getByRole('main')).getAllByRole('listitem');
     expect(rows).toHaveLength(2);
     expect(within(rows[1] as HTMLElement).getByText('Demo bot')).toBeInTheDocument();
     expect(within(rows[0] as HTMLElement).queryByText('Demo bot')).not.toBeInTheDocument();

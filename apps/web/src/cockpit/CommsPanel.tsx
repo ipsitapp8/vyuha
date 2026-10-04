@@ -83,12 +83,12 @@ function Radio({ perceived, pending, send }: Omit<Props, 'lobby' | 'selfId'>) {
         })}
       </p>
       {jammed ? (
-        <p role="alert" className="mb-2 text-sm text-red-400">
+        <p role="alert" className="mb-2 text-sm text-red-700">
           {t('cockpit.radio.jammed')}
         </p>
       ) : null}
       {perceived.comms.switchPenaltyActive ? (
-        <p className="mb-2 text-sm text-amber-400">{t('cockpit.radio.switchPenalty')}</p>
+        <p className="mb-2 text-sm text-amber-700">{t('cockpit.radio.switchPenalty')}</p>
       ) : null}
       <div className="flex items-end gap-2">
         <Select
@@ -226,7 +226,7 @@ function MessageItem({
         })}
         {flags.delayedBy !== null ? (
           <span
-            className="inline-flex items-center gap-1 text-amber-400"
+            className="inline-flex items-center gap-1 text-amber-700"
             title={t('cockpit.inbox.delayed', { n: flags.delayedBy })}
           >
             <Clock className="h-3.5 w-3.5" aria-hidden="true" />
@@ -235,7 +235,7 @@ function MessageItem({
         ) : null}
         {flags.garbled ? (
           <span
-            className="inline-flex items-center gap-1 text-red-400"
+            className="inline-flex items-center gap-1 text-red-700"
             title={t('cockpit.inbox.garbled')}
           >
             <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />
@@ -278,10 +278,10 @@ export function OrderStatus({
       <span
         className={
           m.authState === 'FAILED'
-            ? 'inline-flex items-center gap-1 font-semibold text-red-400'
+            ? 'inline-flex items-center gap-1 font-semibold text-red-700'
             : m.authState === 'VERIFIED'
               ? 'inline-flex items-center gap-1 font-semibold text-primary'
-              : 'inline-flex items-center gap-1 text-amber-400'
+              : 'inline-flex items-center gap-1 text-amber-700'
         }
       >
         {m.authState === 'FAILED' ? <ShieldX className="h-4 w-4" aria-hidden="true" /> : null}

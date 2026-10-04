@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 export function DemoBotBadge() {
   const { t } = useTranslation();
   return (
-    <span className="ml-2 inline-block rounded border border-amber-500/60 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+    <span className="ml-2 inline-block rounded border border-amber-700/60 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-700">
       {t('demoBot.label')}
     </span>
   );

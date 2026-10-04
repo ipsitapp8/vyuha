@@ -84,7 +84,7 @@ export function FlowGraph({ summary }: { summary: AarSummary }) {
                     y={cy - 3}
                     textAnchor="middle"
                     fontSize="9"
-                    fill={CHANNEL_COLORS[l.channel as keyof typeof CHANNEL_COLORS] ?? '#e2e8f0'}
+                    fill={CHANNEL_COLORS[l.channel as keyof typeof CHANNEL_COLORS] ?? '#0f172a'}
                   >
                     {l.channel} {l.total}
                   </text>
@@ -97,8 +97,8 @@ export function FlowGraph({ summary }: { summary: AarSummary }) {
                   cx={n.x}
                   cy={n.y}
                   r={9}
-                  fill={n.unmanned ? '#475569' : '#0ea5e9'}
-                  stroke="#e2e8f0"
+                  fill={n.unmanned ? '#475569' : '#0369a1'}
+                  stroke="#ffffff"
                   strokeWidth={1.5}
                 />
                 <text
@@ -106,7 +106,7 @@ export function FlowGraph({ summary }: { summary: AarSummary }) {
                   y={n.y + (n.y < SIZE / 2 ? -14 : 22)}
                   textAnchor="middle"
                   fontSize="10"
-                  fill="#e2e8f0"
+                  fill="#0f172a"
                 >
                   {n.label}
                 </text>

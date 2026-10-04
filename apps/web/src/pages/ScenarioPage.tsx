@@ -115,7 +115,7 @@ export function ScenarioPage() {
           </p>
         ) : null}
         {load.kind === 'error' ? (
-          <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
+          <div role="alert" className="mt-4 flex items-center gap-3 text-red-700">
             <span>{load.message}</span>
             <Button variant="outline" onClick={retryLoad}>
               {t('common.retry')}
@@ -157,24 +157,24 @@ export function ScenarioPage() {
             </div>
 
             {actionError ? (
-              <p role="alert" className="mb-4 text-red-400">
+              <p role="alert" className="mb-4 text-red-700">
                 {actionError}
               </p>
             ) : null}
             {job?.status === 'FAILED' && job.error ? (
-              <p role="alert" className="mb-4 text-red-400">
+              <p role="alert" className="mb-4 text-red-700">
                 {job.error.message}
               </p>
             ) : null}
             {job?.status === 'DONE' && job.result && job.result.warnings.length > 0 ? (
-              <ul className="mb-4 list-disc pl-5 text-sm text-amber-400" role="status">
+              <ul className="mb-4 list-disc pl-5 text-sm text-amber-700" role="status">
                 {job.result.warnings.map((w) => (
                   <li key={w}>{w}</li>
                 ))}
               </ul>
             ) : null}
             {mapError ? (
-              <p role="alert" className="mb-4 text-red-400">
+              <p role="alert" className="mb-4 text-red-700">
                 {mapError}
               </p>
             ) : null}

@@ -34,7 +34,7 @@ export function RequireRole({ role }: { role?: Role }) {
   if (status === 'error') {
     return (
       <Centered>
-        <p role="alert" className="text-red-400">
+        <p role="alert" className="text-red-700">
           {t('common.serverUnreachable')}
         </p>
         <Button onClick={retry}>{t('common.retry')}</Button>

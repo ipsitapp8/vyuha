@@ -25,9 +25,9 @@ import {
   latencyChart,
 } from './chartData';
 
-const GRID = '#334155';
-const AXIS = '#94a3b8';
-const TOOLTIP = { background: '#0f172a', border: '1px solid #334155', color: '#e2e8f0' };
+const GRID = '#d3dae6';
+const AXIS = '#475569';
+const TOOLTIP = { background: '#ffffff', border: '1px solid #94a3b8', color: '#0f172a' };
 
 function Card({
   title,
@@ -192,11 +192,11 @@ export function AarCharts({ summary }: { summary: AarSummary }) {
                 { x: 0, y: 0 },
                 { x: 100, y: 100 },
               ]}
-              stroke="#a3a3a3"
+              stroke="#64748b"
               strokeDasharray="5 4"
               label={{
                 value: t('aar.charts.ideal'),
-                fill: '#a3a3a3',
+                fill: '#475569',
                 fontSize: 10,
                 position: 'insideBottomRight',
               }}
@@ -205,7 +205,7 @@ export function AarCharts({ summary }: { summary: AarSummary }) {
               type="monotone"
               dataKey="accuracy"
               name={t('aar.charts.overall')}
-              stroke="#38bdf8"
+              stroke="#0369a1"
               strokeWidth={2}
               dot={{ r: 5 }}
             />

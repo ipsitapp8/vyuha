@@ -1,20 +1,20 @@
 import type { AarSummary, Channel } from '@vyuha/shared';
 
 export const PLAYER_COLORS = [
-  '#38bdf8',
-  '#f87171',
-  '#4ade80',
-  '#fbbf24',
-  '#c084fc',
-  '#22d3ee',
-  '#f472b6',
-  '#a3a3a3',
+  '#0369a1',
+  '#b91c1c',
+  '#15803d',
+  '#b45309',
+  '#7e22ce',
+  '#0e7490',
+  '#be185d',
+  '#525252',
 ];
 export const CHANNEL_COLORS: Record<'VHF' | 'HF' | 'SATCOM' | 'DATALINK', string> = {
-  VHF: '#38bdf8',
-  HF: '#4ade80',
-  SATCOM: '#fbbf24',
-  DATALINK: '#c084fc',
+  VHF: '#0369a1',
+  HF: '#15803d',
+  SATCOM: '#b45309',
+  DATALINK: '#7e22ce',
 };
 export const MAIN_CHANNELS = ['VHF', 'HF', 'SATCOM', 'DATALINK'] as const;
 

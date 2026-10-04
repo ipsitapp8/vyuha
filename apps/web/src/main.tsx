@@ -5,7 +5,10 @@ import { App } from './App';
 import { AuthProvider } from './auth/AuthContext';
 import { RouteErrorBoundary } from './components/ErrorBoundary';
 import { initI18n } from './i18n';
+import { applyPrefs, readPrefs } from './lib/displayPrefs';
 import './index.css';
+
+applyPrefs(readPrefs());
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element #root not found');

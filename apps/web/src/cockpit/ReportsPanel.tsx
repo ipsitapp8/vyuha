@@ -92,7 +92,7 @@ function ContactCard({
           ? ''
           : ` · ${t('cockpit.contacts.via', { channel: t(`channels.${contact.via}`) })}`}
       </p>
-      <p className={grade ? 'mt-1 text-primary' : 'mt-1 text-amber-400'}>
+      <p className={grade ? 'mt-1 text-primary' : 'mt-1 text-amber-700'}>
         {grade ? t('cockpit.contacts.graded', { grade }) : t('cockpit.contacts.ungraded')}
       </p>
       <div className="mt-2">

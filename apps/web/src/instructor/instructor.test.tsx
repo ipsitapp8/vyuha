@@ -410,7 +410,7 @@ describe('TraineeCards', () => {
     expect(card.getByText('80%')).toBeInTheDocument();
     expect(card.getByText(/Comply with order at 90% \(wrong\), 01:35/)).toBeInTheDocument();
     expect(card.getByText('“Looked like HQ”')).toBeInTheDocument();
-    expect(card.getByText('1', { selector: 'dd.font-semibold' })).toHaveClass('text-red-400');
+    expect(card.getByText('1', { selector: 'dd.font-semibold' })).toHaveClass('text-red-700');
     const empty = within(screen.getByTestId('card-p2'));
     expect(empty.getByText('None yet')).toBeInTheDocument();
   });

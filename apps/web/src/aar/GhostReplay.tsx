@@ -209,7 +209,7 @@ export function GhostReplay({ summary }: { summary: AarSummary }) {
       <p className="mb-3 text-xs text-muted-foreground">{t('aar.replay.markers')}</p>
 
       {error ? (
-        <p role="alert" className="mb-2 text-red-400">
+        <p role="alert" className="mb-2 text-red-700">
           {error}
         </p>
       ) : null}
@@ -324,7 +324,7 @@ function DecisionPanel({
         </dd>
       </dl>
       {d.spoofActed ? (
-        <p className="mt-1 text-sm font-semibold text-red-400">{t('aar.decision.spoof')}</p>
+        <p className="mt-1 text-sm font-semibold text-red-700">{t('aar.decision.spoof')}</p>
       ) : null}
 
       {detail === null ? (
@@ -332,7 +332,7 @@ function DecisionPanel({
           {t('aar.decision.loading')}
         </p>
       ) : 'error' in detail ? (
-        <p role="alert" className="mt-3 text-sm text-red-400">
+        <p role="alert" className="mt-3 text-sm text-red-700">
           {detail.error}
         </p>
       ) : (
