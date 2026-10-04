@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 222 30% 8%;
+  --foreground: 210 20% 94%;
+  --primary: 142 60% 45%;
+  --primary-foreground: 222 30% 8%;
+  --secondary: 222 20% 16%;
+  --secondary-foreground: 210 20% 94%;
+  --muted: 222 20% 16%;
+  --muted-foreground: 215 15% 65%;
+  --border: 222 15% 24%;
+  --radius: 0.5rem;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
