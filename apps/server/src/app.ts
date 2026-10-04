@@ -8,15 +8,26 @@ import { registerAuth } from './auth';
 import { sendError } from './errors';
 import { registerGeoRoutes } from './geo/routes';
 import type { Deps } from './repos';
+import { LobbyService } from './sessions/lobby';
+import { SessionManager, type Scheduler } from './sessions/manager';
+import { registerSessionRoutes } from './sessions/routes';
+import type { RateLimiter } from './sessions/socket';
+import { attachSocketHandlers } from './sessions/socket';
 
 export type { Deps, DbProbe } from './repos';
 
 export interface App {
   fastify: FastifyInstance;
   io: SocketServer;
+  manager: SessionManager;
 }
 
-export async function buildApp(config: Config, deps: Deps): Promise<App> {
+export interface AppOptions {
+  scheduler?: Scheduler;
+  limiter?: RateLimiter;
+}
+
+export async function buildApp(config: Config, deps: Deps, options: AppOptions = {}): Promise<App> {
   const fastify = Fastify({ logger: config.NODE_ENV !== 'test' });
   const origins = config.CORS_ORIGIN.split(',');
   await fastify.register(cors, { origin: origins, credentials: true });
@@ -55,8 +66,31 @@ export async function buildApp(config: Config, deps: Deps): Promise<App> {
 
   registerGeoRoutes(fastify, deps, guards);
 
-  await fastify.ready();
+  // Socket.IO shares the Fastify HTTP server; sessions fan out through it.
   const io = new SocketServer(fastify.server, { cors: { origin: origins, credentials: true } });
+  const lobby = new LobbyService(deps.sessions, deps.scenarios);
+  const manager = new SessionManager(
+    deps.sessions,
+    deps.scenarios,
+    deps.geo,
+    lobby,
+    io,
+    fastify.log,
+    options.scheduler,
+  );
+  registerSessionRoutes(fastify, guards, deps.sessions, lobby, manager);
+  attachSocketHandlers(
+    io,
+    config,
+    deps.users,
+    deps.sessions,
+    lobby,
+    manager,
+    fastify.log,
+    options.limiter,
+  );
+  fastify.addHook('onClose', async () => manager.shutdown());
 
-  return { fastify, io };
+  await fastify.ready();
+  return { fastify, io, manager };
 }

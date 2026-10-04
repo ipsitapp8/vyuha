@@ -78,6 +78,9 @@ model Session {
   scenario           Scenario       @relation(fields: [scenarioId], references: [id])
   code               String         @unique
   status             SessionStatus  @default(LOBBY)
+  speed              Int            @default(1)
+  currentTick        Int            @default(0)
+  createdAt          DateTime       @default(now())
   startedAt          DateTime?
   endedAt            DateTime?
   degradationProfile Json
@@ -122,6 +125,7 @@ model SessionEvent {
   visibleTo String[]
 
   @@index([sessionId, tick])
+  @@index([sessionId, type])
 }
 
 model Decision {

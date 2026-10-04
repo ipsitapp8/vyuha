@@ -4,9 +4,10 @@ import { buildDeps, prisma } from './db';
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const { fastify, io } = await buildApp(config, buildDeps(config));
+  const { fastify, io, manager } = await buildApp(config, buildDeps(config));
 
   const shutdown = async (): Promise<void> => {
+    manager.shutdown();
     io.close();
     await fastify.close();
     await prisma.$disconnect();
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown());
 
   await fastify.listen({ port: config.PORT, host: '0.0.0.0' });
+  await manager.resumeAll();
 }
 
 main().catch((err: unknown) => {

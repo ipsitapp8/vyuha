@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import type { AreaBounds, ScenarioSummary, TerrainGridDto, WeatherDto } from '@vyuha/shared';
+import type {
+  AreaBounds,
+  ScenarioDefinition,
+  ScenarioSummary,
+  TerrainGridDto,
+  WeatherDto,
+} from '@vyuha/shared';
 import type { GeoRepo } from './geo/ingest';
+import { createMemorySessionStore } from './sessions/memoryStore';
 import { loadConfig } from './config';
 import { EmailTakenError, type Deps, type UserRecord } from './repos';
 
@@ -33,11 +40,17 @@ export function memoryGeo(
 export function createMemoryDeps(
   scenarios: ScenarioSummary[] = [],
   geoOverrides: Partial<Pick<Deps, 'geo' | 'geoNetwork' | 'bundledGeo'>> = {},
+  definitions: Record<string, ScenarioDefinition> = {},
 ): {
   deps: Deps;
   users: Map<string, UserRecord>;
+  sessions: ReturnType<typeof createMemorySessionStore>;
 } {
   const users = new Map<string, UserRecord>();
+  const sessions = createMemorySessionStore(
+    (id) => users.get(id)?.name ?? id,
+    (id) => definitions[id]?.title ?? id,
+  );
   const deps: Deps = {
     db: { ping: async () => true },
     users: {
@@ -50,7 +63,11 @@ export function createMemoryDeps(
         return rec;
       },
     },
-    scenarios: { listSummaries: async () => scenarios },
+    scenarios: {
+      listSummaries: async () => scenarios,
+      getDefinition: async (id) => definitions[id] ?? null,
+    },
+    sessions,
     geo: geoOverrides.geo ?? memoryGeo(),
     geoNetwork: geoOverrides.geoNetwork ?? {
       fetchElevations: async (p) => p.map(() => 3000),
@@ -58,5 +75,5 @@ export function createMemoryDeps(
     },
     bundledGeo: geoOverrides.bundledGeo ?? (() => null),
   };
-  return { deps, users };
+  return { deps, users, sessions };
 }

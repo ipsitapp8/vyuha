@@ -1,6 +1,7 @@
 import type { BundledGeo, GeoRepo } from './geo/ingest';
+import type { SessionStore } from './sessions/store';
 import type { GeoNetwork } from './geo/openMeteo';
-import type { PublicUser, Role, ScenarioSummary } from '@vyuha/shared';
+import type { PublicUser, Role, ScenarioDefinition, ScenarioSummary } from '@vyuha/shared';
 
 export interface UserRecord extends PublicUser {
   passwordHash: string;
@@ -26,6 +27,7 @@ export interface UserRepo {
 
 export interface ScenarioRepo {
   listSummaries(): Promise<ScenarioSummary[]>;
+  getDefinition(id: string): Promise<ScenarioDefinition | null>;
 }
 
 export interface DbProbe {
@@ -39,4 +41,5 @@ export interface Deps {
   geo: GeoRepo;
   geoNetwork: GeoNetwork;
   bundledGeo: (scenarioId: string) => BundledGeo | null;
+  sessions: SessionStore;
 }

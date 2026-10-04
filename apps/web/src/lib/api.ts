@@ -3,14 +3,23 @@ import {
   apiErrorSchema,
   authResponseSchema,
   ingestJobSchema,
+  joinSessionResponseSchema,
+  lobbyViewSchema,
   scenarioGeoResponseSchema,
   scenarioListResponseSchema,
+  sessionListResponseSchema,
+  type AssignPlayerBody,
   type IngestJob,
+  type JoinSessionResponse,
+  type LobbyView,
+  type PaceDefaults,
   type LoginBody,
   type PublicUser,
   type RegisterBody,
   type ScenarioGeoResponse,
   type ScenarioSummary,
+  type SessionListResponse,
+  type Speed,
 } from '@vyuha/shared';
 
 const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
@@ -29,7 +38,7 @@ export class ApiRequestError extends Error {
 async function request<S extends z.ZodType>(
   path: string,
   schema: S,
-  init?: { method: 'GET' | 'POST'; body?: unknown },
+  init?: { method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown },
 ): Promise<z.infer<S>> {
   let res: Response;
   try {
@@ -93,5 +102,55 @@ export const api = {
   },
   getGeoIngestJob(id: string): Promise<IngestJob> {
     return request(`/scenarios/${encodeURIComponent(id)}/ingest-geo`, ingestJobSchema);
+  },
+
+  // ---- sessions ----
+  createSession(scenarioId: string): Promise<LobbyView> {
+    return request('/sessions', lobbyViewSchema, { method: 'POST', body: { scenarioId } });
+  },
+  listSessions(): Promise<SessionListResponse['sessions']> {
+    return request('/sessions', sessionListResponseSchema).then((r) => r.sessions);
+  },
+  getLobby(sessionId: string): Promise<LobbyView> {
+    return request(`/sessions/${encodeURIComponent(sessionId)}/lobby`, lobbyViewSchema);
+  },
+  getLobbyByCode(code: string): Promise<LobbyView> {
+    return request(`/sessions/code/${encodeURIComponent(code)}/lobby`, lobbyViewSchema);
+  },
+  joinSession(code: string): Promise<JoinSessionResponse> {
+    return request('/sessions/join', joinSessionResponseSchema, { method: 'POST', body: { code } });
+  },
+  createTeam(sessionId: string, name: string): Promise<LobbyView> {
+    return request(`/sessions/${sessionId}/teams`, lobbyViewSchema, {
+      method: 'POST',
+      body: { name },
+    });
+  },
+  deleteTeam(sessionId: string, teamId: string): Promise<LobbyView> {
+    return request(`/sessions/${sessionId}/teams/${teamId}`, lobbyViewSchema, { method: 'DELETE' });
+  },
+  setPace(sessionId: string, teamId: string, pace: PaceDefaults): Promise<LobbyView> {
+    return request(`/sessions/${sessionId}/teams/${teamId}/pace`, lobbyViewSchema, {
+      method: 'PATCH',
+      body: { pace },
+    });
+  },
+  assignPlayer(sessionId: string, playerId: string, body: AssignPlayerBody): Promise<LobbyView> {
+    return request(`/sessions/${sessionId}/players/${playerId}`, lobbyViewSchema, {
+      method: 'PUT',
+      body,
+    });
+  },
+  sessionControl(
+    sessionId: string,
+    action: 'start' | 'pause' | 'resume' | 'end',
+  ): Promise<LobbyView> {
+    return request(`/sessions/${sessionId}/${action}`, lobbyViewSchema, { method: 'POST' });
+  },
+  setSpeed(sessionId: string, speed: Speed): Promise<LobbyView> {
+    return request(`/sessions/${sessionId}/speed`, lobbyViewSchema, {
+      method: 'POST',
+      body: { speed },
+    });
   },
 };

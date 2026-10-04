@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ScenarioSummary } from '@vyuha/shared';
+import type { ScenarioSummary, SessionListResponse } from '@vyuha/shared';
 import { Link } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ type State =
 
 export function InstructorHome() {
   const [state, setState] = useState<State>({ kind: 'loading' });
+  const [sessions, setSessions] = useState<SessionListResponse['sessions'] | null>(null);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   const fetchScenarios = useCallback(() => {
     api
@@ -31,6 +33,23 @@ export function InstructorHome() {
   }, [fetchScenarios]);
 
   useEffect(fetchScenarios, [fetchScenarios]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .listSessions()
+      .then((s) => {
+        if (!cancelled) setSessions(s);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setSessionsError(e instanceof ApiRequestError ? e.message : 'Could not load sessions.');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
@@ -83,6 +102,40 @@ export function InstructorHome() {
                   Area {s.areaBounds.south.toFixed(2)}°N–{s.areaBounds.north.toFixed(2)}°N,{' '}
                   {s.areaBounds.west.toFixed(2)}°E–{s.areaBounds.east.toFixed(2)}°E
                 </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <h2 className="mb-2 mt-10 text-xl font-semibold">Exercise sessions</h2>
+        {sessionsError ? (
+          <p role="alert" className="text-red-400">
+            {sessionsError}
+          </p>
+        ) : null}
+        {!sessions && !sessionsError ? <p role="status">Loading sessions…</p> : null}
+        {sessions && sessions.length === 0 ? (
+          <p className="text-muted-foreground">
+            No sessions yet. Open a scenario and choose "Create exercise session".
+          </p>
+        ) : null}
+        {sessions && sessions.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {sessions.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-secondary p-3"
+              >
+                <span>
+                  <strong>{s.scenarioTitle}</strong>{' '}
+                  <span className="font-mono text-primary">{s.code}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {' '}
+                    · {s.status} · {s.playerCount} trainees
+                  </span>
+                </span>
+                <Link className="text-primary underline" to={`/instructor/sessions/${s.id}`}>
+                  Open
+                </Link>
               </li>
             ))}
           </ul>

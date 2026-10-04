@@ -8,6 +8,11 @@ export const apiErrorCodeSchema = z.enum([
   'EMAIL_TAKEN',
   'NOT_FOUND',
   'GEO_UNAVAILABLE',
+  'CONFLICT',
+  'RATE_LIMITED',
+  'NOT_IN_SESSION',
+  'SESSION_NOT_FOUND',
+  'SESSION_STATE',
   'INTERNAL_ERROR',
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;

@@ -22,3 +22,15 @@ export function sendValidationError(reply: FastifyReply, err: ZodError): Fastify
     err.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
   );
 }
+
+/** Thrown by services; route/socket layers turn it into a typed error response. */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: ApiErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}

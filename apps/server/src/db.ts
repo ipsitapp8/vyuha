@@ -1,7 +1,8 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { areaBoundsSchema, type ScenarioSummary } from '@vyuha/shared';
+import { areaBoundsSchema, scenarioDefinitionSchema, type ScenarioSummary } from '@vyuha/shared';
 import { z } from 'zod';
 import type { Config } from './config';
+import { createPrismaSessionStore } from './sessions/prismaStore';
 import { bundledGeo } from './geo/bundled';
 import type { GeoRepo } from './geo/ingest';
 import { createOpenMeteoNetwork } from './geo/openMeteo';
@@ -51,6 +52,19 @@ const scenarios: ScenarioRepo = {
       injectCount: jsonArrayLength(r.msel),
       unitCount: jsonArrayLength(r.initialUnits),
     }));
+  },
+  async getDefinition(id) {
+    const r = await prisma.scenario.findUnique({ where: { id } });
+    if (!r) return null;
+    return scenarioDefinitionSchema.parse({
+      title: r.title,
+      description: r.description,
+      areaBounds: r.areaBounds,
+      seed: r.seed,
+      msel: r.msel,
+      initialUnits: r.initialUnits,
+      paceDefaults: r.paceDefaults,
+    });
   },
 };
 
@@ -113,5 +127,6 @@ export function buildDeps(config: Config): Deps {
       forecastUrl: config.OPEN_METEO_FORECAST_URL,
     }),
     bundledGeo,
+    sessions: createPrismaSessionStore(prisma),
   };
 }

@@ -56,12 +56,12 @@ function setAuthCookie(reply: FastifyReply, config: Config, user: PublicUser): v
   });
 }
 
-async function resolveUser(
-  request: FastifyRequest,
+/** Verifies a JWT and loads its user (null when missing, invalid, expired or the user is gone). */
+export async function authenticateToken(
+  token: string | undefined,
   config: Config,
   users: UserRepo,
 ): Promise<PublicUser | null> {
-  const token = request.cookies[AUTH_COOKIE_NAME];
   if (!token) return null;
   try {
     const decoded = tokenPayloadSchema.safeParse(
@@ -73,6 +73,14 @@ async function resolveUser(
   } catch {
     return null;
   }
+}
+
+async function resolveUser(
+  request: FastifyRequest,
+  config: Config,
+  users: UserRepo,
+): Promise<PublicUser | null> {
+  return authenticateToken(request.cookies[AUTH_COOKIE_NAME], config, users);
 }
 
 export interface AuthGuards {

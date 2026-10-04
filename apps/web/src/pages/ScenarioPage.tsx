@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { elevationRange } from '@vyuha/engine';
 import type { IngestJob, ScenarioGeoResponse, ScenarioSummary } from '@vyuha/shared';
 import { AppHeader } from '@/components/AppHeader';
@@ -24,6 +24,8 @@ export function ScenarioPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current !== null) window.clearInterval(pollRef.current);
@@ -83,6 +85,18 @@ export function ScenarioPage() {
     }
   };
 
+  const createSession = async (): Promise<void> => {
+    setCreating(true);
+    setActionError(null);
+    try {
+      const lobby = await api.createSession(id);
+      navigate(`/instructor/sessions/${lobby.session.id}`);
+    } catch (e) {
+      setActionError(errMsg(e, 'Could not create the session.'));
+      setCreating(false);
+    }
+  };
+
   const onMapError = useCallback((m: string) => setMapError(m), []);
   const running = job?.status === 'RUNNING';
 
@@ -120,6 +134,9 @@ export function ScenarioPage() {
                   : load.geo.terrain
                     ? 'Refresh real terrain and weather'
                     : 'Ingest real terrain and weather'}
+              </Button>
+              <Button variant="outline" onClick={() => void createSession()} disabled={creating}>
+                {creating ? 'Creating…' : 'Create exercise session'}
               </Button>
               {running && job ? (
                 <div className="flex min-w-60 flex-1 flex-col gap-1" role="status">
