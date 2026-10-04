@@ -3,6 +3,7 @@ import { apiErrorCodeSchema } from './errors';
 import {
   areaBoundsSchema,
   channelSchema,
+  injectSchema,
   latLonSchema,
   paceDefaultsSchema,
   unitStatusSchema,
@@ -112,6 +113,8 @@ export type JoinSessionResponse = z.infer<typeof joinSessionResponseSchema>;
 // ---- Socket contracts ----------------------------------------------------------------------
 
 export const SOCKET_EVENTS = {
+  instructorInput: 'instructor:input',
+  watch: 'instructor:watch',
   join: 'session:join',
   action: 'action',
   lobbyUpdate: 'lobby:update',
@@ -176,6 +179,24 @@ export const playerActionSchema = z.discriminatedUnion('type', [
   }),
 ]);
 export type PlayerAction = z.infer<typeof playerActionSchema>;
+
+/** Everything the instructor can do to a live exercise. The server assigns ids to new injects. */
+export const instructorInputSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('INJECT_NOW'), inject: injectSchema }),
+  z.object({
+    type: z.literal('SET_JAMMING'),
+    channel: channelSchema.exclude(['RUNNER']),
+    intensity: z.number().min(0).max(1),
+  }),
+  z.object({ type: z.literal('MSEL_ADD'), inject: injectSchema }),
+  z.object({ type: z.literal('MSEL_UPDATE'), inject: injectSchema }),
+  z.object({ type: z.literal('MSEL_REMOVE'), injectId: z.string().min(1) }),
+]);
+export type InstructorInput = z.infer<typeof instructorInputSchema>;
+
+/** Which trainee's perceived picture the instructor is looking at (null = nobody). */
+export const watchPayloadSchema = z.object({ playerId: z.string().min(1).nullable() });
+export type WatchPayload = z.infer<typeof watchPayloadSchema>;
 
 export const ackSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true) }),
@@ -297,6 +318,31 @@ export type EventDto = z.infer<typeof eventDtoSchema>;
 export const truthEventDtoSchema = eventDtoSchema.extend({ visibleTo: z.array(z.string()) });
 export type TruthEventDto = z.infer<typeof truthEventDtoSchema>;
 
+export const playerMetricsViewSchema = z.object({
+  decisionCount: z.number().int(),
+  scoredDecisionCount: z.number().int(),
+  avgLatencyTicks: z.number().nullable(),
+  brierScore: z.number().nullable(),
+  /** Mean stated confidence (0-100) over scored decisions, to compare with `accuracy`. */
+  meanConfidence: z.number().nullable(),
+  /** Share of scored decisions that were correct (0-100). */
+  accuracy: z.number().nullable(),
+  gradeCount: z.number().int(),
+  gradingAccuracy: z.number().nullable(),
+  channelSwitchCount: z.number().int(),
+  spoofActedCount: z.number().int(),
+  lastDecision: z
+    .object({
+      tick: z.number().int(),
+      actionType: z.string(),
+      confidence: z.number(),
+      outcome: z.union([z.literal(0), z.literal(1)]).nullable(),
+      rationale: z.string(),
+    })
+    .nullable(),
+});
+export type PlayerMetricsView = z.infer<typeof playerMetricsViewSchema>;
+
 /** Instructor-only ground truth snapshot. */
 export const truthViewSchema = z.object({
   tick: z.number().int(),
@@ -322,6 +368,15 @@ export const truthViewSchema = z.object({
   }),
   satcomUp: z.boolean(),
   weather: weatherViewSchema,
+  manualJamming: z.object({
+    VHF: z.number(),
+    HF: z.number(),
+    SATCOM: z.number(),
+    DATALINK: z.number(),
+    RUNNER: z.number(),
+  }),
+  msel: z.array(z.object({ inject: injectSchema, fired: z.boolean() })),
+  players: z.record(z.string(), playerMetricsViewSchema),
   drift: z.record(
     z.string(),
     z.object({

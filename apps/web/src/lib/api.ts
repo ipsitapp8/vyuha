@@ -6,11 +6,13 @@ import {
   joinSessionResponseSchema,
   lobbyViewSchema,
   scenarioGeoResponseSchema,
+  scenarioDetailSchema,
   scenarioListResponseSchema,
   sessionResponseSchema,
   sessionListResponseSchema,
   type AssignPlayerBody,
   type IngestJob,
+  type Inject,
   type JoinSessionResponse,
   type LobbyView,
   type PaceDefaults,
@@ -18,6 +20,7 @@ import {
   type PublicUser,
   type RegisterBody,
   type ScenarioGeoResponse,
+  type ScenarioDetail,
   type ScenarioSummary,
   type SessionListResponse,
   type Speed,
@@ -147,6 +150,15 @@ export const api = {
     return request(`/sessions/${sessionId}/speed`, lobbyViewSchema, {
       method: 'POST',
       body: { speed },
+    });
+  },
+  getScenario(id: string): Promise<ScenarioDetail> {
+    return request(`/scenarios/${encodeURIComponent(id)}`, scenarioDetailSchema);
+  },
+  saveMsel(id: string, msel: Inject[]): Promise<ScenarioDetail> {
+    return request(`/scenarios/${encodeURIComponent(id)}/msel`, scenarioDetailSchema, {
+      method: 'PUT',
+      body: { msel },
     });
   },
 };

@@ -4,6 +4,7 @@ import { InstructorHome } from './pages/InstructorHome';
 import { ScenarioPage } from './pages/ScenarioPage';
 import { InstructorSessionPage } from './pages/InstructorSessionPage';
 import { CockpitPage } from './cockpit/CockpitPage';
+import { MselAuthoringPage } from './pages/MselAuthoringPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -20,7 +21,9 @@ export function App() {
       <Route element={<RequireRole role="INSTRUCTOR" />}>
         <Route path="/instructor" element={<InstructorHome />} />
         <Route path="/instructor/scenarios/:id" element={<ScenarioPage />} />
+        <Route path="/instructor/scenarios/:id/msel" element={<MselAuthoringPage />} />
         <Route path="/instructor/sessions/:id" element={<InstructorSessionPage />} />
+        <Route path="/instructor/session/:id" element={<InstructorSessionPage />} />
       </Route>
       <Route element={<RequireRole role="TRAINEE" />}>
         <Route path="/trainee" element={<TraineeHome />} />

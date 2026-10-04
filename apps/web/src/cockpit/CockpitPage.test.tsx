@@ -88,6 +88,8 @@ function setLive(over: Partial<SessionLive> = {}): void {
       acts.push(a);
       return { ok: true };
     },
+    instruct: async (): Promise<Ack> => ({ ok: true }),
+    watch: async (): Promise<Ack> => ({ ok: true }),
     ...over,
   };
 }

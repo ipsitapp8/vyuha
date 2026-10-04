@@ -122,3 +122,35 @@ button.vy-contact {
     font-size: 10px;
   }
 }
+
+/* ---- God View truth map ---- */
+.vy-t-BLUE .vy-dot {
+  background: #2563eb;
+  border-color: #bfdbfe;
+}
+.vy-t-RED .vy-dot {
+  background: #dc2626;
+  border-color: #fecaca;
+  border-radius: 3px;
+}
+.vy-t-NEUTRAL .vy-dot {
+  background: #9ca3af;
+  border-color: #f3f4f6;
+}
+.vy-d-AIR .vy-dot {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border-radius: 0;
+}
+.vy-d-EW .vy-dot,
+.vy-d-CYBER .vy-dot {
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+.vy-believed .vy-dot {
+  background: transparent;
+  border: 2px dashed #fbbf24;
+  border-radius: 9999px;
+}
+.vy-believed .vy-label {
+  color: #fde68a;
+}

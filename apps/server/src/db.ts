@@ -53,6 +53,18 @@ const scenarios: ScenarioRepo = {
       unitCount: jsonArrayLength(r.initialUnits),
     }));
   },
+  async updateMsel(id, msel) {
+    try {
+      await prisma.scenario.update({
+        where: { id },
+        data: { msel: msel as unknown as Prisma.InputJsonValue },
+      });
+      return true;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') return false;
+      throw err;
+    }
+  },
   async getDefinition(id) {
     const r = await prisma.scenario.findUnique({ where: { id } });
     if (!r) return null;

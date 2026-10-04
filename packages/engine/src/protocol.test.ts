@@ -595,3 +595,64 @@ describe('state construction, helpers and replay', () => {
     expect(haversineM(r.position, r.position)).toBe(0);
   });
 });
+
+describe('live MSEL editing by the instructor', () => {
+  const inj = (id: string, tick: number) => jam(id, tick, 'HF', 0.4, 30);
+  const ids = (s: TruthState): string[] => s.msel.map((i) => i.id);
+
+  it('adds injects (kept in time order) that then fire at their tick', () => {
+    const s0 = makeState({ scenario: makeScenario({ msel: [inj('b', 50)] }) });
+    const { state, events } = run(s0, 12, { 2: [{ type: 'MSEL_ADD', inject: inj('a', 10) }] });
+    expect(ids(state)).toEqual(['a', 'b']);
+    expect(ofType(events, 'MSEL_CHANGED')).toHaveLength(1);
+    const fired = ofType(events, 'INJECT_FIRED').filter((e) => e.payload['injectId'] === 'a');
+    expect(fired).toHaveLength(1);
+    expect(fired[0]?.tick).toBe(10);
+  });
+
+  it('updates and removes injects that have not fired', () => {
+    const s0 = makeState({ scenario: makeScenario({ msel: [inj('a', 100), inj('b', 200)] }) });
+    const { state } = run(s0, 3, {
+      1: [{ type: 'MSEL_UPDATE', inject: inj('a', 300) }],
+      2: [{ type: 'MSEL_REMOVE', injectId: 'b' }],
+    });
+    expect(state.msel).toEqual([inj('a', 300)]);
+  });
+
+  it('refuses edits that would rewrite history or collide', () => {
+    const s0 = makeState({ scenario: makeScenario({ msel: [inj('a', 2), inj('b', 100)] }) });
+    const { events } = run(s0, 6, {
+      4: [
+        { type: 'MSEL_UPDATE', inject: inj('a', 90) }, // already fired
+        { type: 'MSEL_REMOVE', injectId: 'a' }, // already fired
+        { type: 'MSEL_ADD', inject: inj('b', 120) }, // duplicate id
+        { type: 'MSEL_ADD', inject: inj('late', 1) }, // in the past
+        { type: 'MSEL_UPDATE', inject: inj('b', 1) }, // moved into the past
+        { type: 'MSEL_UPDATE', inject: inj('ghost', 50) }, // unknown
+        { type: 'MSEL_REMOVE', injectId: 'ghost' }, // unknown
+      ],
+    });
+    expect(ofType(events, 'INPUT_REJECTED').map((e) => e.payload['reason'])).toEqual([
+      'inject has already fired',
+      'inject has already fired',
+      'duplicate inject id',
+      'inject time is in the past',
+      'inject time is in the past',
+      'unknown inject',
+      'unknown inject',
+    ]);
+    expect(ofType(events, 'MSEL_CHANGED')).toHaveLength(0);
+  });
+
+  it('edits are deterministic: the same inputs replay to the same state', () => {
+    const scenario = makeScenario({ msel: [inj('a', 20)] });
+    const plan: Plan = {
+      3: [{ type: 'MSEL_ADD', inject: inj('x', 15) }],
+      5: [{ type: 'MSEL_REMOVE', injectId: 'a' }],
+    };
+    const s0 = makeState({ scenario, seed: 9 });
+    const direct = run(s0, 30, plan);
+    const replayed = replay(s0, new Map(Object.entries(plan).map(([k, v]) => [Number(k), v])), 30);
+    expect(JSON.stringify(replayed.state)).toBe(JSON.stringify(direct.state));
+  });
+});

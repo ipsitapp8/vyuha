@@ -16,6 +16,7 @@ import { closeEnv, makeEnv, setupLobby, type Env } from './testenv';
 
 let env: Env | undefined;
 const sockets: Socket[] = [];
+let seen = 0; // bumped for every socket event any test client receives
 
 afterEach(async () => {
   for (const s of sockets.splice(0)) s.disconnect();
@@ -38,7 +39,10 @@ async function open(e: Env, email: string | null): Promise<Recorded> {
   });
   sockets.push(socket);
   const rec: Recorded = { socket, events: [] };
-  socket.onAny((name: string, payload: unknown) => rec.events.push({ name, payload }));
+  socket.onAny((name: string, payload: unknown) => {
+    seen += 1;
+    rec.events.push({ name, payload });
+  });
   await new Promise<void>((resolve, reject) => {
     socket.once('connect', () => resolve());
     socket.once('connect_error', (err) => reject(err));
@@ -58,7 +62,15 @@ const act = (rec: Recorded, action: unknown) =>
     rec.socket.emit(SOCKET_EVENTS.action, action, (ack: unknown) => resolve(ackSchema.parse(ack)));
   });
 
-const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 120));
+/** Waits until socket traffic has gone quiet (robust under a loaded machine), at most 3 s. */
+const settle = async (): Promise<void> => {
+  const nap = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  await nap(100);
+  for (let i = 0, last = -1; i < 30 && seen !== last; i++) {
+    last = seen;
+    await nap(100);
+  }
+};
 const named = (rec: Recorded, name: string) => rec.events.filter((x) => x.name === name);
 const lastPerceived = (rec: Recorded): PerceivedStateDto => {
   const last = named(rec, SOCKET_EVENTS.perceived).at(-1);

@@ -2,8 +2,10 @@ import type { Server as SocketServer, Socket } from 'socket.io';
 import {
   AUTH_COOKIE_NAME,
   SOCKET_EVENTS,
+  instructorInputSchema,
   joinPayloadSchema,
   playerActionSchema,
+  watchPayloadSchema,
   type Ack,
   type ApiErrorCode,
   type JoinAck,
@@ -43,6 +45,8 @@ interface SocketData {
   user: PublicUser;
   sessionId?: string;
   playerId?: string;
+  /** Trainee whose picture this instructor socket is currently watching. */
+  watching?: string;
 }
 
 const data = (socket: Socket): SocketData => socket.data as SocketData;
@@ -144,6 +148,56 @@ export function attachSocketHandlers(
           const truth = await manager.truthFor(session.id);
           if (truth) socket.emit(SOCKET_EVENTS.truth, truth);
         }
+      } catch (err) {
+        fail(ack, err);
+      }
+    });
+
+    /** Instructor controls: live injects, jamming levels and live MSEL edits. */
+    socket.on(SOCKET_EVENTS.instructorInput, async (raw: unknown, ack: unknown) => {
+      try {
+        const { user, sessionId } = data(socket);
+        if (!limiter.allow(`action:${user.id}`))
+          throw new HttpError(429, 'RATE_LIMITED', 'Too many actions, slow down');
+        if (user.role !== 'INSTRUCTOR')
+          throw new HttpError(403, 'FORBIDDEN', 'Only instructors can do that');
+        if (!sessionId) throw new HttpError(403, 'NOT_IN_SESSION', 'Join a session first');
+        const parsed = instructorInputSchema.safeParse(raw);
+        if (!parsed.success) {
+          const detail = parsed.error.issues
+            .map((i) => `${i.path.join('.') || 'input'}: ${i.message}`)
+            .join('; ');
+          throw new HttpError(400, 'VALIDATION_ERROR', detail);
+        }
+        await manager.enqueueInstructor(sessionId, parsed.data);
+        reply(ack, { ok: true });
+      } catch (err) {
+        fail(ack, err);
+      }
+    });
+
+    /** God View: look through one trainee's eyes (their perceived state is streamed to this socket). */
+    socket.on(SOCKET_EVENTS.watch, async (raw: unknown, ack: unknown) => {
+      try {
+        const d = data(socket);
+        if (d.user.role !== 'INSTRUCTOR')
+          throw new HttpError(403, 'FORBIDDEN', 'Only instructors can do that');
+        if (!d.sessionId) throw new HttpError(403, 'NOT_IN_SESSION', 'Join a session first');
+        const parsed = watchPayloadSchema.safeParse(raw);
+        if (!parsed.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Invalid player');
+        const target = parsed.data.playerId;
+        let perceived = null;
+        if (target) {
+          perceived = await manager.perceivedFor(d.sessionId, target);
+          if (!perceived) throw new HttpError(404, 'NOT_FOUND', 'No such player in this exercise');
+        }
+        if (d.watching) await socket.leave(room.player(d.sessionId, d.watching));
+        d.watching = target ?? undefined;
+        if (target) {
+          await socket.join(room.player(d.sessionId, target));
+          if (perceived) socket.emit(SOCKET_EVENTS.perceived, perceived);
+        }
+        reply(ack, { ok: true });
       } catch (err) {
         fail(ack, err);
       }

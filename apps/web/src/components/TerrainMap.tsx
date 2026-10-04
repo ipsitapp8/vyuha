@@ -3,6 +3,7 @@ import { Map as MapLibreMap, NavigationControl, type StyleSpecification } from '
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@/lib/maplibre';
 import { elevationRange } from '@vyuha/engine';
+import { useTranslation } from 'react-i18next';
 import type { AreaBounds, TerrainGridDto } from '@vyuha/shared';
 import { elevationColor } from '@/lib/terrainColor';
 
@@ -38,10 +39,11 @@ function renderHeatmap(grid: TerrainGridDto): string {
 interface Props {
   bounds: AreaBounds;
   terrain: TerrainGridDto | null;
-  onError: (message: string) => void;
+  onError: () => void;
 }
 
 export function TerrainMap({ bounds, terrain, onError }: Props) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export function TerrainMap({ bounds, terrain, onError }: Props) {
           paint: { 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
         });
       } catch {
-        onError('Could not draw the terrain overlay.');
+        onError();
       }
     };
 
@@ -96,7 +98,7 @@ export function TerrainMap({ bounds, terrain, onError }: Props) {
     <div
       ref={containerRef}
       role="img"
-      aria-label="Map of the scenario area with a terrain elevation heat overlay"
+      aria-label={t('instructor.scenario.mapLabel')}
       className="h-[28rem] w-full overflow-hidden rounded-lg border border-border"
     />
   );

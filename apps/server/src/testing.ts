@@ -66,6 +66,12 @@ export function createMemoryDeps(
     scenarios: {
       listSummaries: async () => scenarios,
       getDefinition: async (id) => definitions[id] ?? null,
+      updateMsel: async (id, msel) => {
+        const def = definitions[id];
+        if (!def) return false;
+        definitions[id] = { ...def, msel };
+        return true;
+      },
     },
     sessions,
     geo: geoOverrides.geo ?? memoryGeo(),

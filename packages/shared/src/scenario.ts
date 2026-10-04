@@ -135,3 +135,67 @@ export type ScenarioSummary = z.infer<typeof scenarioSummarySchema>;
 
 export const scenarioListResponseSchema = z.object({ scenarios: z.array(scenarioSummarySchema) });
 export type ScenarioListResponse = z.infer<typeof scenarioListResponseSchema>;
+
+export const scenarioDetailSchema = scenarioDefinitionSchema.extend({ id: z.string() });
+export type ScenarioDetail = z.infer<typeof scenarioDetailSchema>;
+
+export const updateMselBodySchema = z.object({ msel: mselSchema });
+export type UpdateMselBody = z.infer<typeof updateMselBodySchema>;
+
+/**
+ * Cross-checks an MSEL against the scenario it belongs to (the Zod schema only checks shapes).
+ * Returns human-readable problems; an empty list means the MSEL is consistent.
+ */
+export function validateMselReferences(
+  msel: readonly Inject[],
+  units: readonly Pick<ScenarioUnit, 'id' | 'side'>[],
+  bounds?: AreaBounds,
+): string[] {
+  const problems: string[] = [];
+  const side = new Map(units.map((u) => [u.id, u.side]));
+  const seen = new Set<string>();
+  const inside = (p: LatLon): boolean =>
+    !bounds ||
+    (p.lat >= bounds.south &&
+      p.lat <= bounds.north &&
+      p.lon >= bounds.west &&
+      p.lon <= bounds.east);
+
+  for (const i of msel) {
+    const at = `"${i.title}" (${i.id})`;
+    if (seen.has(i.id)) problems.push(`Duplicate inject id ${i.id}.`);
+    seen.add(i.id);
+    const need = (
+      unitId: string,
+      label: string,
+      ok?: (s: ScenarioUnit['side']) => boolean,
+    ): void => {
+      const s = side.get(unitId);
+      if (!s) problems.push(`${at}: ${label} "${unitId}" is not a unit in this scenario.`);
+      else if (ok && !ok(s))
+        problems.push(`${at}: ${label} "${unitId}" has the wrong side for this inject.`);
+    };
+    switch (i.type) {
+      case 'CONFLICTING_REPORTS':
+        need(i.unitId, 'unit', (s) => s !== 'BLUE');
+        if (!inside(i.altPosition))
+          problems.push(`${at}: alternative position is outside the exercise area.`);
+        break;
+      case 'SPOOF_ORDER':
+        need(i.targetUnitId, 'target unit', (s) => s === 'BLUE');
+        break;
+      case 'RUNNER_DISPATCH':
+        need(i.fromUnitId, 'sender unit', (s) => s === 'BLUE');
+        need(i.toUnitId, 'recipient unit', (s) => s === 'BLUE');
+        break;
+      case 'ADVERSARY_MOVE':
+        need(i.unitId, 'unit', (s) => s !== 'BLUE');
+        if (!inside(i.destination))
+          problems.push(`${at}: destination is outside the exercise area.`);
+        break;
+      default:
+        break;
+    }
+  }
+  return problems;
+}

@@ -12,6 +12,7 @@ import {
   truthViewSchema,
   type Ack,
   type EventDto,
+  type InstructorInput,
   type LobbyView,
   type PerceivedStateDto,
   type PlayerAction,
@@ -38,6 +39,10 @@ export interface SessionLive {
   playerEvents: EventDto[];
   truthEvents: TruthEventDto[];
   act: (action: PlayerAction) => Promise<Ack>;
+  /** Instructor only: live injects, jamming levels and MSEL edits. */
+  instruct: (input: InstructorInput) => Promise<Ack>;
+  /** Instructor only: stream one trainee's perceived picture (null stops). */
+  watch: (playerId: string | null) => Promise<Ack>;
 }
 
 const NOT_CONNECTED: Ack = {
@@ -126,25 +131,40 @@ export function useSessionSocket(code: string | null): SessionLive {
     };
   }, [code]);
 
-  const act = useCallback((action: PlayerAction): Promise<Ack> => {
+  const request = useCallback((event: string, payload: unknown): Promise<Ack> => {
     const socket = socketRef.current;
     if (!socket || !socket.connected) return Promise.resolve(NOT_CONNECTED);
     return new Promise((resolve) => {
-      socket
-        .timeout(8000)
-        .emit(SOCKET_EVENTS.action, action, (timeoutErr: Error | null, raw: unknown) => {
-          if (timeoutErr) {
-            resolve({
-              ok: false,
-              error: { code: 'INTERNAL_ERROR', message: 'The server did not answer in time.' },
-            });
-            return;
-          }
-          const parsed = ackSchema.safeParse(raw);
-          resolve(parsed.success ? parsed.data : NOT_CONNECTED);
-        });
+      socket.timeout(8000).emit(event, payload, (timeoutErr: Error | null, raw: unknown) => {
+        if (timeoutErr) {
+          resolve({
+            ok: false,
+            error: { code: 'INTERNAL_ERROR', message: 'The server did not answer in time.' },
+          });
+          return;
+        }
+        const parsed = ackSchema.safeParse(raw);
+        resolve(parsed.success ? parsed.data : NOT_CONNECTED);
+      });
     });
   }, []);
+
+  const act = useCallback(
+    (action: PlayerAction): Promise<Ack> => request(SOCKET_EVENTS.action, action),
+    [request],
+  );
+  const instruct = useCallback(
+    (input: InstructorInput): Promise<Ack> => request(SOCKET_EVENTS.instructorInput, input),
+    [request],
+  );
+  const watch = useCallback(
+    async (target: string | null): Promise<Ack> => {
+      const ack = await request(SOCKET_EVENTS.watch, { playerId: target });
+      if (ack.ok && target === null) setPerceived(null);
+      return ack;
+    },
+    [request],
+  );
 
   return {
     connection,
@@ -158,5 +178,7 @@ export function useSessionSocket(code: string | null): SessionLive {
     playerEvents,
     truthEvents,
     act,
+    instruct,
+    watch,
   };
 }

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { elevationRange } from '@vyuha/engine';
 import type { IngestJob, ScenarioGeoResponse, ScenarioSummary } from '@vyuha/shared';
 import { AppHeader } from '@/components/AppHeader';
 import { TerrainMap } from '@/components/TerrainMap';
 import { Button } from '@/components/ui/button';
-import { api, ApiRequestError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { apiErrorText } from '@/lib/messages';
 import { RAMP_CSS_GRADIENT } from '@/lib/terrainColor';
 
 type Load =
@@ -14,11 +16,10 @@ type Load =
   | { kind: 'ready'; scenario: ScenarioSummary; geo: ScenarioGeoResponse };
 
 const POLL_MS = 1500;
-const errMsg = (e: unknown, fallback: string): string =>
-  e instanceof ApiRequestError ? e.message : fallback;
 
 export function ScenarioPage() {
   const { id = '' } = useParams();
+  const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [job, setJob] = useState<IngestJob | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -36,12 +37,12 @@ export function ScenarioPage() {
     try {
       const [scenarios, geo] = await Promise.all([api.listScenarios(), api.getScenarioGeo(id)]);
       const scenario = scenarios.find((s) => s.id === id);
-      if (!scenario) return { kind: 'error', message: 'Scenario not found.' };
+      if (!scenario) return { kind: 'error', message: t('instructor.scenario.notFound') };
       return { kind: 'ready', scenario, geo };
     } catch (e) {
-      return { kind: 'error', message: errMsg(e, 'Could not load this scenario.') };
+      return { kind: 'error', message: apiErrorText(t, e, t('instructor.scenario.loadFailed')) };
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,10 +70,10 @@ export function ScenarioPage() {
       }
     } catch (e) {
       stopPolling();
-      setActionError(errMsg(e, 'Lost contact with the server while ingesting.'));
+      setActionError(apiErrorText(t, e, t('instructor.scenario.lostContact')));
       setJob(null);
     }
-  }, [id, fetchAll, stopPolling]);
+  }, [id, fetchAll, stopPolling, t]);
 
   const startIngest = async (): Promise<void> => {
     setActionError(null);
@@ -81,7 +82,7 @@ export function ScenarioPage() {
       stopPolling();
       pollRef.current = window.setInterval(() => void poll(), POLL_MS);
     } catch (e) {
-      setActionError(errMsg(e, 'Could not start ingestion.'));
+      setActionError(apiErrorText(t, e, t('instructor.scenario.startFailed')));
     }
   };
 
@@ -92,12 +93,12 @@ export function ScenarioPage() {
       const lobby = await api.createSession(id);
       navigate(`/instructor/sessions/${lobby.session.id}`);
     } catch (e) {
-      setActionError(errMsg(e, 'Could not create the session.'));
+      setActionError(apiErrorText(t, e, t('instructor.scenario.createFailed')));
       setCreating(false);
     }
   };
 
-  const onMapError = useCallback((m: string) => setMapError(m), []);
+  const onMapError = useCallback(() => setMapError(t('instructor.scenario.mapDrawFailed')), [t]);
   const running = job?.status === 'RUNNING';
 
   return (
@@ -105,19 +106,19 @@ export function ScenarioPage() {
       <AppHeader />
       <main className="mx-auto max-w-5xl px-4 py-6">
         <Link to="/instructor" className="text-sm text-primary underline">
-          ← All scenarios
+          {t('instructor.scenario.back')}
         </Link>
 
         {load.kind === 'loading' ? (
           <p role="status" className="mt-4">
-            Loading scenario…
+            {t('instructor.scenario.loading')}
           </p>
         ) : null}
         {load.kind === 'error' ? (
           <div role="alert" className="mt-4 flex items-center gap-3 text-red-400">
             <span>{load.message}</span>
             <Button variant="outline" onClick={retryLoad}>
-              Retry
+              {t('common.retry')}
             </Button>
           </div>
         ) : null}
@@ -130,20 +131,26 @@ export function ScenarioPage() {
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <Button onClick={() => void startIngest()} disabled={running}>
                 {running
-                  ? 'Ingesting…'
+                  ? t('instructor.scenario.ingesting')
                   : load.geo.terrain
-                    ? 'Refresh real terrain and weather'
-                    : 'Ingest real terrain and weather'}
+                    ? t('instructor.scenario.refresh')
+                    : t('instructor.scenario.ingest')}
               </Button>
               <Button variant="outline" onClick={() => void createSession()} disabled={creating}>
-                {creating ? 'Creating…' : 'Create exercise session'}
+                {creating
+                  ? t('instructor.scenario.creating')
+                  : t('instructor.scenario.createSession')}
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/instructor/scenarios/${id}/msel`}>
+                  {t('instructor.scenario.editMsel')}
+                </Link>
               </Button>
               {running && job ? (
                 <div className="flex min-w-60 flex-1 flex-col gap-1" role="status">
                   <progress className="h-2 w-full" value={job.done} max={job.total} />
                   <span className="text-xs text-muted-foreground">
-                    Elevation samples {job.done}/{job.total}. Open-Meteo limits requests per minute,
-                    so this can take a few minutes.
+                    {t('instructor.scenario.progress', { done: job.done, total: job.total })}
                   </span>
                 </div>
               ) : null}
@@ -182,30 +189,35 @@ export function ScenarioPage() {
               <TerrainLegend grid={load.geo.terrain} />
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">
-                No terrain stored yet. Use the button above to fetch the elevation grid.
+                {t('instructor.scenario.noTerrain')}
               </p>
             )}
 
             <section className="mt-6 rounded-lg border border-border bg-secondary p-4">
-              <h2 className="mb-2 font-semibold">Weather at area centre</h2>
+              <h2 className="mb-2 font-semibold">{t('instructor.scenario.weatherTitle')}</h2>
               {load.geo.weather ? (
                 <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                   <Stat
-                    label="Visibility"
+                    label={t('instructor.scenario.visibility')}
                     value={`${(load.geo.weather.visibilityM / 1000).toFixed(1)} km`}
                   />
                   <Stat
-                    label="Precipitation"
+                    label={t('instructor.scenario.precipitation')}
                     value={`${load.geo.weather.precipitationMm.toFixed(1)} mm`}
                   />
-                  <Stat label="Wind" value={`${load.geo.weather.windKph.toFixed(1)} km/h`} />
                   <Stat
-                    label="Fetched"
+                    label={t('instructor.scenario.wind')}
+                    value={`${load.geo.weather.windKph.toFixed(1)} km/h`}
+                  />
+                  <Stat
+                    label={t('instructor.scenario.fetched')}
                     value={new Date(load.geo.weather.fetchedAt).toLocaleString()}
                   />
                 </dl>
               ) : (
-                <p className="text-sm text-muted-foreground">No weather stored yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('instructor.scenario.noWeather')}
+                </p>
               )}
             </section>
           </>
@@ -225,15 +237,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function TerrainLegend({ grid }: { grid: NonNullable<ScenarioGeoResponse['terrain']> }) {
+  const { t } = useTranslation();
   const { min, max } = elevationRange(grid);
   return (
     <div className="mt-3 max-w-md text-xs text-muted-foreground">
       <div className="h-3 rounded" style={{ background: RAMP_CSS_GRADIENT }} aria-hidden="true" />
       <div className="mt-1 flex justify-between">
         <span>{Math.round(min)} m</span>
-        <span>
-          Elevation ({grid.rows}×{grid.cols} grid)
-        </span>
+        <span>{t('instructor.scenario.elevation', { rows: grid.rows, cols: grid.cols })}</span>
         <span>{Math.round(max)} m</span>
       </div>
     </div>

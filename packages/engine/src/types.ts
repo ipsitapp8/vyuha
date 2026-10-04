@@ -220,7 +220,10 @@ export type EngineInput =
       basedOnMessageId?: string;
     }
   | { type: 'INJECT'; inject: Inject }
-  | { type: 'SET_JAMMING'; channel: Channel; intensity: number };
+  | { type: 'SET_JAMMING'; channel: Channel; intensity: number }
+  | { type: 'MSEL_ADD'; inject: Inject }
+  | { type: 'MSEL_UPDATE'; inject: Inject }
+  | { type: 'MSEL_REMOVE'; injectId: string };
 
 export interface EngineEvent {
   tick: number;

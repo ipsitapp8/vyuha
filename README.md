@@ -55,3 +55,10 @@ docker compose up --build    # web :8080, server :4000, db :5432
 - English / Hindi toggle (top right); all trainee-facing strings live in `apps/web/src/i18n/en.json` and `hi.json` (a test checks both files have the same keys). Instructor screens are localised in Phase 7.
 - MapLibre 6 needs its worker served at `/maplibre/` (handled by a small Vite plugin in dev and emitted into the production build; nginx serves `.mjs` as JavaScript).
 - `GET /auth/session` always answers 200 (`user: null` when signed out), so a signed-out page load produces no console errors.
+
+## Instructor God View and MSEL authoring (Phase 7)
+
+- `/instructor/sessions/:id` (alias `/instructor/session/:id`): lobby management before the start; during the exercise the **God View** shows the ground-truth map beside the selected trainee's perceived map (dashed markers on the truth map are what that trainee believes), start/pause/resume/end and 1x/2x/4x, live inject buttons (jam a channel, cut SATCOM, spoof an order, conflicting report, weather change), per-channel degradation sliders, a horizontal MSEL timeline (add / edit / remove injects that have not fired), and a card per trainee (picture drift, last decision, average latency, confidence vs correctness and Brier score, spoofs acted on).
+- Instructor inputs travel over the socket (`instructor:input`, `instructor:watch`), are validated with Zod, logged as session events and replayed exactly after a server restart.
+- `/instructor/scenarios/:id/msel`: form-based MSEL editor with JSON import/export. Imports are checked with the shared Zod schema and against the scenario (unknown units, wrong sides, positions outside the area). Sessions already started keep the MSEL they began with.
+- All instructor screens are available in English and Hindi.

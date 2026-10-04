@@ -21,17 +21,21 @@ import {
   playerRoleSchema,
   scenarioDefinitionSchema,
   terrainGridSchema,
+  instructorInputSchema,
+  type InstructorInput,
   type PerceivedStateDto,
   type PlayerAction,
   type SessionStatus,
   type Speed,
   type TruthViewDto,
 } from '@vyuha/shared';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { HttpError } from '../errors';
 import type { GeoRepo } from '../geo/ingest';
 import type { ScenarioRepo } from '../repos';
 import type { LobbyService } from './lobby';
+import { LiveMetrics } from './liveMetrics';
 import type { DecisionRow, EventRow, GradeRow, SessionRow, SessionStore } from './store';
 
 export interface Scheduler {
@@ -84,10 +88,10 @@ const startedPayloadSchema = z.object({
   seed: z.number().int(),
 });
 
-const loggedInputSchema = z.object({
-  playerId: z.string(),
-  action: z.unknown(),
-});
+const loggedInputSchema = z.union([
+  z.object({ playerId: z.string(), action: z.unknown() }),
+  z.object({ instructor: z.literal(true), input: z.unknown() }),
+]);
 
 const decisionPayloadSchema = z.object({
   playerId: z.string(),
@@ -112,13 +116,41 @@ const gradePayloadSchema = z.object({
   trueCredibility: z.number(),
 });
 
+/** A queued input: from a trainee or from the instructor. Logged exactly as applied, so replay is exact. */
+type Pending =
+  | { kind: 'player'; playerId: string; action: PlayerAction }
+  | { kind: 'instructor'; input: InstructorInput };
+
+export function pendingToEngine(p: Pending): EngineInput {
+  if (p.kind === 'player') return toEngineInput(p.playerId, p.action);
+  const i = p.input;
+  switch (i.type) {
+    case 'INJECT_NOW':
+      return { type: 'INJECT', inject: i.inject };
+    case 'SET_JAMMING':
+      return { type: 'SET_JAMMING', channel: i.channel, intensity: i.intensity };
+    case 'MSEL_ADD':
+      return { type: 'MSEL_ADD', inject: i.inject };
+    case 'MSEL_UPDATE':
+      return { type: 'MSEL_UPDATE', inject: i.inject };
+    case 'MSEL_REMOVE':
+      return { type: 'MSEL_REMOVE', injectId: i.injectId };
+  }
+}
+
+const inputPayload = (p: Pending): Record<string, unknown> =>
+  p.kind === 'player'
+    ? { playerId: p.playerId, action: p.action }
+    : { instructor: true, input: p.input };
+
 interface Runtime {
   sessionId: string;
   state: TruthState;
   rng: Rng;
   status: SessionStatus;
   speed: Speed;
-  pending: { playerId: string; action: PlayerAction }[];
+  pending: Pending[];
+  metrics: LiveMetrics;
   timer: unknown;
   nextDue: number;
   queue: Promise<unknown>;
@@ -164,7 +196,7 @@ export function toEngineInput(playerId: string, a: PlayerAction): EngineInput {
   }
 }
 
-export function buildTruthView(state: TruthState): TruthViewDto {
+export function buildTruthView(state: TruthState, metrics: LiveMetrics): TruthViewDto {
   return {
     tick: state.tick,
     units: state.units.map((u) => ({
@@ -181,6 +213,9 @@ export function buildTruthView(state: TruthState): TruthViewDto {
     jamming: currentJamming(state),
     satcomUp: satcomUp(state),
     weather: state.weather,
+    manualJamming: state.manualJam,
+    msel: state.msel.map((inject) => ({ inject, fired: state.firedInjectIds.includes(inject.id) })),
+    players: metrics.view(state.players.map((p) => p.id)),
     drift: Object.fromEntries(state.players.map((p) => [p.id, computePictureDrift(state, p.id)])),
   };
 }
@@ -336,7 +371,41 @@ export class SessionManager {
     if (rt.pending.length >= MAX_PENDING_INPUTS) {
       throw new HttpError(429, 'RATE_LIMITED', 'Too many pending actions');
     }
-    rt.pending.push({ playerId, action });
+    rt.pending.push({ kind: 'player', playerId, action });
+  }
+
+  /** Queues an instructor action (live inject, jamming level, MSEL edit) for the next tick. */
+  async enqueueInstructor(sessionId: string, input: InstructorInput): Promise<void> {
+    const rt = await this.ensureRuntime(sessionId);
+    if (!rt || rt.status !== 'RUNNING') {
+      throw new HttpError(409, 'SESSION_STATE', 'The exercise is not running');
+    }
+    if (rt.pending.length >= MAX_PENDING_INPUTS) {
+      throw new HttpError(429, 'RATE_LIMITED', 'Too many pending actions');
+    }
+    rt.pending.push({ kind: 'instructor', input: this.prepareInstructorInput(rt, input) });
+  }
+
+  /** Server-assigned ids and times, fixed here so the logged input replays identically. */
+  private prepareInstructorInput(rt: Runtime, input: InstructorInput): InstructorInput {
+    const parsed = instructorInputSchema.parse(input);
+    if (parsed.type === 'INJECT_NOW') {
+      return {
+        type: 'INJECT_NOW',
+        inject: {
+          ...parsed.inject,
+          id: `live-${randomUUID().slice(0, 8)}`,
+          tick: rt.state.tick + 1,
+        },
+      };
+    }
+    if (parsed.type === 'MSEL_ADD') {
+      return {
+        type: 'MSEL_ADD',
+        inject: { ...parsed.inject, id: `msel-${randomUUID().slice(0, 8)}` },
+      };
+    }
+    return parsed;
   }
 
   // ---- views ----------------------------------------------------------------------------
@@ -349,7 +418,7 @@ export class SessionManager {
 
   async truthFor(sessionId: string): Promise<TruthViewDto | null> {
     const rt = await this.ensureRuntime(sessionId);
-    return rt ? buildTruthView(rt.state) : null;
+    return rt ? buildTruthView(rt.state, rt.metrics) : null;
   }
 
   async broadcastLobby(sessionId: string): Promise<void> {
@@ -397,13 +466,17 @@ export class SessionManager {
     for (const e of logged) {
       if (e.type !== 'INPUT') continue;
       const li = loggedInputSchema.parse(e.payload);
-      const action = actionFromLog(li.action);
+      const pending: Pending =
+        'instructor' in li
+          ? { kind: 'instructor', input: instructorInputSchema.parse(li.input) }
+          : { kind: 'player', playerId: li.playerId, action: actionFromLog(li.action) };
       const list = inputsByTick.get(e.tick) ?? [];
-      list.push(toEngineInput(li.playerId, action));
+      list.push(pendingToEngine(pending));
       inputsByTick.set(e.tick, list);
     }
-    const { state } = replay(initial, inputsByTick, session.currentTick);
+    const { state, events: replayed } = replay(initial, inputsByTick, session.currentTick);
     const rt = this.makeRuntime(session, state);
+    rt.metrics.ingest(replayed);
     this.runtimes.set(sessionId, rt);
     return rt;
   }
@@ -430,6 +503,7 @@ export class SessionManager {
       status: session.status,
       speed: session.speed,
       pending: [],
+      metrics: new LiveMetrics(),
       timer: null,
       nextDue: 0,
       queue: Promise.resolve(),
@@ -494,15 +568,11 @@ export class SessionManager {
         events.push({
           tick: state.tick + 1,
           type: 'INPUT',
-          payload: { playerId: inp.playerId, action: inp.action },
+          payload: inputPayload(inp),
           visibleTo: ['instructor'],
         });
       }
-      const result = step(
-        state,
-        tickInputs.map((x) => toEngineInput(x.playerId, x.action)),
-        rt.rng,
-      );
+      const result = step(state, tickInputs.map(pendingToEngine), rt.rng);
       state = result.state;
       events.push(...result.events);
     }
@@ -524,6 +594,7 @@ export class SessionManager {
       return;
     }
     rt.state = state;
+    rt.metrics.ingest(events);
     this.emitBatch(rt, events);
   }
 
@@ -562,7 +633,7 @@ export class SessionManager {
       if (mine.length > 0) target.emit(SOCKET_EVENTS.playerEvents, mine);
     }
     const instructor = this.io.to(room.instructor(sessionId));
-    instructor.emit(SOCKET_EVENTS.truth, buildTruthView(state));
+    instructor.emit(SOCKET_EVENTS.truth, buildTruthView(state, rt.metrics));
     if (events.length > 0) instructor.emit(SOCKET_EVENTS.truthEvents, events);
     this.emitStatus(rt);
   }

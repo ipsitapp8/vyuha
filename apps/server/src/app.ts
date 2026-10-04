@@ -5,6 +5,7 @@ import { Server as SocketServer } from 'socket.io';
 import type { HealthResponse, ScenarioListResponse } from '@vyuha/shared';
 import type { Config } from './config';
 import { registerAuth } from './auth';
+import { registerScenarioRoutes } from './scenarioRoutes';
 import { sendError } from './errors';
 import { registerGeoRoutes } from './geo/routes';
 import type { Deps } from './repos';
@@ -65,6 +66,7 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
   });
 
   registerGeoRoutes(fastify, deps, guards);
+  registerScenarioRoutes(fastify, deps, guards);
 
   // Socket.IO shares the Fastify HTTP server; sessions fan out through it.
   const io = new SocketServer(fastify.server, { cors: { origin: origins, credentials: true } });

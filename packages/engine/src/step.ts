@@ -652,6 +652,36 @@ function prune(ctx: Ctx): void {
 
 // ---- Player / instructor inputs ---------------------------------------------------------
 
+/** Live MSEL editing: only injects that have not fired yet can be added, changed or removed. */
+function editMsel(
+  ctx: Ctx,
+  input: Extract<EngineInput, { type: 'MSEL_ADD' | 'MSEL_UPDATE' | 'MSEL_REMOVE' }>,
+): void {
+  const { s } = ctx;
+  const id = input.type === 'MSEL_REMOVE' ? input.injectId : input.inject.id;
+  const existing = s.msel.findIndex((i) => i.id === id);
+  const fired = s.firedInjectIds.includes(id);
+
+  if (input.type === 'MSEL_ADD') {
+    if (existing >= 0 || fired) return reject(ctx, null, input.type, 'duplicate inject id');
+    if (input.inject.tick < s.tick)
+      return reject(ctx, null, input.type, 'inject time is in the past');
+    s.msel.push(input.inject);
+  } else {
+    if (existing < 0) return reject(ctx, null, input.type, 'unknown inject');
+    if (fired) return reject(ctx, null, input.type, 'inject has already fired');
+    if (input.type === 'MSEL_REMOVE') {
+      s.msel.splice(existing, 1);
+    } else {
+      if (input.inject.tick < s.tick)
+        return reject(ctx, null, input.type, 'inject time is in the past');
+      s.msel[existing] = input.inject;
+    }
+  }
+  s.msel.sort((a, b) => a.tick - b.tick || a.id.localeCompare(b.id));
+  emit(ctx, 'MSEL_CHANGED', { change: input.type, injectId: id }, [INSTRUCTOR]);
+}
+
 function applyInput(ctx: Ctx, input: EngineInput): void {
   const { s } = ctx;
   if (input.type === 'INJECT') {
@@ -667,6 +697,10 @@ function applyInput(ctx: Ctx, input: EngineInput): void {
       INSTRUCTOR,
     ]);
     return;
+  }
+
+  if (input.type === 'MSEL_ADD' || input.type === 'MSEL_UPDATE' || input.type === 'MSEL_REMOVE') {
+    return editMsel(ctx, input);
   }
 
   const player = getPlayer(s, input.playerId);
