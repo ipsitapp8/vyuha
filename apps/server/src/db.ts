@@ -1,6 +1,10 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { areaBoundsSchema, type ScenarioSummary } from '@vyuha/shared';
 import { z } from 'zod';
+import type { Config } from './config';
+import { bundledGeo } from './geo/bundled';
+import type { GeoRepo } from './geo/ingest';
+import { createOpenMeteoNetwork } from './geo/openMeteo';
 import {
   EmailTakenError,
   type DbProbe,
@@ -50,4 +54,64 @@ const scenarios: ScenarioRepo = {
   },
 };
 
-export const deps: Deps = { db, users, scenarios };
+export const geoRepo: GeoRepo = {
+  async getScenarioBounds(id) {
+    const row = await prisma.scenario.findUnique({ where: { id }, select: { areaBounds: true } });
+    return row ? areaBoundsSchema.parse(row.areaBounds) : null;
+  },
+  async getTerrain(id) {
+    const row = await prisma.terrainGrid.findUnique({ where: { scenarioId: id } });
+    if (!row) return null;
+    return {
+      rows: row.rows,
+      cols: row.cols,
+      bbox: areaBoundsSchema.parse(row.bbox),
+      elevations: row.elevations,
+    };
+  },
+  async getWeather(id) {
+    const row = await prisma.weatherSnapshot.findUnique({ where: { scenarioId: id } });
+    if (!row) return null;
+    return {
+      visibilityM: row.visibilityM,
+      precipitationMm: row.precipitationMm,
+      windKph: row.windKph,
+      fetchedAt: row.fetchedAt.toISOString(),
+    };
+  },
+  async saveTerrain(id, grid) {
+    const data = { rows: grid.rows, cols: grid.cols, bbox: grid.bbox, elevations: grid.elevations };
+    await prisma.terrainGrid.upsert({
+      where: { scenarioId: id },
+      update: data,
+      create: { scenarioId: id, ...data },
+    });
+  },
+  async saveWeather(id, w) {
+    const data = {
+      visibilityM: w.visibilityM,
+      precipitationMm: w.precipitationMm,
+      windKph: w.windKph,
+      fetchedAt: new Date(w.fetchedAt),
+    };
+    await prisma.weatherSnapshot.upsert({
+      where: { scenarioId: id },
+      update: data,
+      create: { scenarioId: id, ...data },
+    });
+  },
+};
+
+export function buildDeps(config: Config): Deps {
+  return {
+    db,
+    users,
+    scenarios,
+    geo: geoRepo,
+    geoNetwork: createOpenMeteoNetwork({
+      elevationUrl: config.OPEN_METEO_ELEVATION_URL,
+      forecastUrl: config.OPEN_METEO_FORECAST_URL,
+    }),
+    bundledGeo,
+  };
+}

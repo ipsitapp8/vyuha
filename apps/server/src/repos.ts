@@ -1,3 +1,5 @@
+import type { BundledGeo, GeoRepo } from './geo/ingest';
+import type { GeoNetwork } from './geo/openMeteo';
 import type { PublicUser, Role, ScenarioSummary } from '@vyuha/shared';
 
 export interface UserRecord extends PublicUser {
@@ -34,4 +36,7 @@ export interface Deps {
   db: DbProbe;
   users: UserRepo;
   scenarios: ScenarioRepo;
+  geo: GeoRepo;
+  geoNetwork: GeoNetwork;
+  bundledGeo: (scenarioId: string) => BundledGeo | null;
 }

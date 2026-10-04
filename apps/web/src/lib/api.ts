@@ -2,10 +2,14 @@ import type { z } from 'zod';
 import {
   apiErrorSchema,
   authResponseSchema,
+  ingestJobSchema,
+  scenarioGeoResponseSchema,
   scenarioListResponseSchema,
+  type IngestJob,
   type LoginBody,
   type PublicUser,
   type RegisterBody,
+  type ScenarioGeoResponse,
   type ScenarioSummary,
 } from '@vyuha/shared';
 
@@ -78,5 +82,16 @@ export const api = {
   },
   async listScenarios(): Promise<ScenarioSummary[]> {
     return (await request('/scenarios', scenarioListResponseSchema)).scenarios;
+  },
+  getScenarioGeo(id: string): Promise<ScenarioGeoResponse> {
+    return request(`/scenarios/${encodeURIComponent(id)}/geo`, scenarioGeoResponseSchema);
+  },
+  startGeoIngest(id: string): Promise<IngestJob> {
+    return request(`/scenarios/${encodeURIComponent(id)}/ingest-geo`, ingestJobSchema, {
+      method: 'POST',
+    });
+  },
+  getGeoIngestJob(id: string): Promise<IngestJob> {
+    return request(`/scenarios/${encodeURIComponent(id)}/ingest-geo`, ingestJobSchema);
   },
 };

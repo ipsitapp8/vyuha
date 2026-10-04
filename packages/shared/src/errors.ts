@@ -7,6 +7,7 @@ export const apiErrorCodeSchema = z.enum([
   'INVALID_CREDENTIALS',
   'EMAIL_TAKEN',
   'NOT_FOUND',
+  'GEO_UNAVAILABLE',
   'INTERNAL_ERROR',
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;

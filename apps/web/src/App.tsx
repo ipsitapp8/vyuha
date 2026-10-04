@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { GuestOnly, RequireRole } from './auth/guards';
 import { InstructorHome } from './pages/InstructorHome';
+import { ScenarioPage } from './pages/ScenarioPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -16,6 +17,7 @@ export function App() {
       </Route>
       <Route element={<RequireRole role="INSTRUCTOR" />}>
         <Route path="/instructor" element={<InstructorHome />} />
+        <Route path="/instructor/scenarios/:id" element={<ScenarioPage />} />
       </Route>
       <Route element={<RequireRole role="TRAINEE" />}>
         <Route path="/trainee" element={<TraineeHome />} />

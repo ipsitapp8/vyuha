@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ScenarioSummary } from '@vyuha/shared';
+import { Link } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { api, ApiRequestError } from '@/lib/api';
@@ -72,6 +73,12 @@ export function InstructorHome() {
                     <dd>{s.seed}</dd>
                   </div>
                 </dl>
+                <Link
+                  className="mt-3 inline-block text-sm text-primary underline"
+                  to={`/instructor/scenarios/${s.id}`}
+                >
+                  Open terrain and weather
+                </Link>
                 <p className="mt-3 text-xs text-muted-foreground">
                   Area {s.areaBounds.south.toFixed(2)}°N–{s.areaBounds.north.toFixed(2)}°N,{' '}
                   {s.areaBounds.west.toFixed(2)}°E–{s.areaBounds.east.toFixed(2)}°E

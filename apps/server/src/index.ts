@@ -1,10 +1,10 @@
 import { buildApp } from './app';
 import { loadConfig } from './config';
-import { deps, prisma } from './db';
+import { buildDeps, prisma } from './db';
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const { fastify, io } = await buildApp(config, deps);
+  const { fastify, io } = await buildApp(config, buildDeps(config));
 
   const shutdown = async (): Promise<void> => {
     io.close();

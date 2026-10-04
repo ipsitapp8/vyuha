@@ -40,3 +40,10 @@ docker compose up --build    # web :8080, server :4000, db :5432
 - `packages/shared` — Zod schemas and shared types
 - `apps/server` — Fastify + Socket.IO + Prisma
 - `apps/web` — Vite + React + Tailwind
+
+## Real terrain and weather (Phase 3)
+
+- Instructor > scenario > "Ingest real terrain and weather" samples a 64x64 elevation grid from the Open-Meteo Elevation API (batches of 100, retry with backoff, 10 s timeout) plus current weather, and stores both in PostgreSQL.
+- Open-Meteo has per-minute/hour limits. Per-minute limits are waited out; hourly/daily limits fail fast and the app falls back to the last cached grid in the DB, then to the real-data copy bundled for Op Silent Ridge (`apps/server/src/seed/silent-ridge-geo.json`), so the demo works offline.
+- `pnpm db:seed` tries live ingestion once and otherwise uses the bundled copy. Regenerate the bundle with `pnpm --filter @vyuha/server geo:fallback` (needs internet).
+- Optional env: `OPEN_METEO_ELEVATION_URL`, `OPEN_METEO_FORECAST_URL` (point at a local mirror), web `VITE_MAP_STYLE_URL` (local tile style). With no tiles reachable the map shows the terrain overlay on a plain background.

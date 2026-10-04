@@ -1,0 +1,5 @@
+
+> @vyuha/server@0.1.0 geo:fallback C:\Users\ipsit\Desktop\SIH26248\apps\server
+> tsx scripts/generate-geo-fallback.ts
+
+Wrote C:\Users\ipsit\Desktop\SIH26248\apps\server\src\seed\silent-ridge-geo.json (4096 elevation samples)

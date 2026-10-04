@@ -1,6 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import { hashPassword } from '../src/auth';
-import { prisma } from '../src/db';
+import { geoRepo, prisma } from '../src/db';
+import { loadConfig } from '../src/config';
+import { bundledGeo } from '../src/geo/bundled';
+import { ingestScenarioGeo } from '../src/geo/ingest';
+import { createOpenMeteoNetwork } from '../src/geo/openMeteo';
 import { SILENT_RIDGE_ID, silentRidge } from '../src/seed/silentRidge';
 
 const INSTRUCTOR = {
@@ -52,6 +56,22 @@ async function main(): Promise<void> {
     update: data,
     create: { id: SILENT_RIDGE_ID, createdById: instructor.id, ...data },
   });
+
+  // Real terrain + weather: try Open-Meteo once (fail fast), else use the bundled real-data copy.
+  const config = loadConfig();
+  const geo = await ingestScenarioGeo(
+    SILENT_RIDGE_ID,
+    geoRepo,
+    createOpenMeteoNetwork({
+      elevationUrl: config.OPEN_METEO_ELEVATION_URL,
+      forecastUrl: config.OPEN_METEO_FORECAST_URL,
+      maxAttempts: 2,
+      rateLimitWaitMs: 5_000,
+    }),
+    bundledGeo(SILENT_RIDGE_ID),
+  );
+  console.log(`Terrain source: ${geo.terrainSource}, weather source: ${geo.weatherSource}`);
+  for (const w of geo.warnings) console.log(`  note: ${w}`);
 
   console.log(
     `Seeded 1 instructor, ${TRAINEE_NAMES.length} trainees and scenario "${silentRidge.title}".`,

@@ -6,6 +6,7 @@ import type { HealthResponse, ScenarioListResponse } from '@vyuha/shared';
 import type { Config } from './config';
 import { registerAuth } from './auth';
 import { sendError } from './errors';
+import { registerGeoRoutes } from './geo/routes';
 import type { Deps } from './repos';
 
 export type { Deps, DbProbe } from './repos';
@@ -29,7 +30,8 @@ export async function buildApp(config: Config, deps: Deps): Promise<App> {
     return sendError(reply, 500, 'INTERNAL_ERROR', 'Unexpected server error');
   });
 
-  const { requireRole } = registerAuth(fastify, config, deps.users);
+  const guards = registerAuth(fastify, config, deps.users);
+  const { requireRole } = guards;
 
   fastify.get('/health', async (): Promise<HealthResponse> => {
     let dbOk = false;
@@ -50,6 +52,8 @@ export async function buildApp(config: Config, deps: Deps): Promise<App> {
       return sendError(reply, 500, 'INTERNAL_ERROR', 'Could not load scenarios');
     }
   });
+
+  registerGeoRoutes(fastify, deps, guards);
 
   await fastify.ready();
   const io = new SocketServer(fastify.server, { cors: { origin: origins, credentials: true } });
