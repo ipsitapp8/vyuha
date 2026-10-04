@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/AuthContext';
+import { RouteErrorBoundary } from './components/ErrorBoundary';
 import { initI18n } from './i18n';
 import './index.css';
 
@@ -14,7 +15,9 @@ void initI18n().then(() => {
     <StrictMode>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <RouteErrorBoundary>
+            <App />
+          </RouteErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </StrictMode>,

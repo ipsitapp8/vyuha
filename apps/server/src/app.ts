@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
+import helmet from '@fastify/helmet';
 import { Server as SocketServer } from 'socket.io';
 import type { HealthResponse, ScenarioListResponse } from '@vyuha/shared';
 import type { Config } from './config';
@@ -14,8 +15,7 @@ import type { Deps } from './repos';
 import { LobbyService } from './sessions/lobby';
 import { SessionManager, type Scheduler } from './sessions/manager';
 import { registerSessionRoutes } from './sessions/routes';
-import type { RateLimiter } from './sessions/socket';
-import { attachSocketHandlers } from './sessions/socket';
+import { RateLimiter, attachSocketHandlers } from './sessions/socket';
 
 export type { Deps, DbProbe } from './repos';
 
@@ -28,11 +28,37 @@ export interface App {
 export interface AppOptions {
   scheduler?: Scheduler;
   limiter?: RateLimiter;
+  /** Throttles /auth/login and /auth/register per client address. */
+  authLimiter?: RateLimiter;
 }
 
+/** Largest accepted JSON body (MSEL imports are the biggest legitimate payload). */
+export const BODY_LIMIT_BYTES = 1024 * 1024;
+/** Largest accepted socket message; actions and joins are a few hundred bytes. */
+export const SOCKET_MAX_BYTES = 64 * 1024;
+
+/** Header values that must never reach the logs. */
+export const LOG_REDACT = [
+  'req.headers.cookie',
+  'req.headers.authorization',
+  '*.headers.cookie',
+  '*.headers.authorization',
+  'res.headers["set-cookie"]',
+];
+
 export async function buildApp(config: Config, deps: Deps, options: AppOptions = {}): Promise<App> {
-  const fastify = Fastify({ logger: config.NODE_ENV !== 'test' });
-  const origins = config.CORS_ORIGIN.split(',');
+  const fastify = Fastify({
+    logger:
+      config.NODE_ENV === 'test'
+        ? false
+        : { level: config.LOG_LEVEL, redact: { paths: LOG_REDACT, censor: '[redacted]' } },
+    bodyLimit: BODY_LIMIT_BYTES,
+  });
+  const origins = config.CORS_ORIGIN;
+  await fastify.register(helmet, {
+    // The API serves JSON, CSV and PDF downloads to a separate web origin.
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
   await fastify.register(cors, { origin: origins, credentials: true });
   await fastify.register(cookie);
 
@@ -41,7 +67,21 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
     if (err.statusCode === 400) {
       return sendError(reply, 400, 'VALIDATION_ERROR', 'Malformed request');
     }
+    if (err.statusCode === 413) {
+      return sendError(reply, 413, 'VALIDATION_ERROR', 'Request body is too large');
+    }
     return sendError(reply, 500, 'INTERNAL_ERROR', 'Unexpected server error');
+  });
+
+  const authLimiter = options.authLimiter ?? new RateLimiter(30, 0.5);
+  fastify.addHook('onRequest', async (request, reply) => {
+    const path = request.url.split('?')[0];
+    if (request.method === 'POST' && (path === '/auth/login' || path === '/auth/register')) {
+      if (!authLimiter.allow(request.ip)) {
+        return sendError(reply, 429, 'RATE_LIMITED', 'Too many attempts, try again shortly');
+      }
+    }
+    return undefined;
   });
 
   const guards = registerAuth(fastify, config, deps.users);
@@ -71,7 +111,10 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
   registerScenarioRoutes(fastify, deps, guards);
 
   // Socket.IO shares the Fastify HTTP server; sessions fan out through it.
-  const io = new SocketServer(fastify.server, { cors: { origin: origins, credentials: true } });
+  const io = new SocketServer(fastify.server, {
+    cors: { origin: origins, credentials: true },
+    maxHttpBufferSize: SOCKET_MAX_BYTES,
+  });
   const lobby = new LobbyService(deps.sessions, deps.scenarios);
   const manager = new SessionManager(
     deps.sessions,

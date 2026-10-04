@@ -29,7 +29,11 @@ services:
       PORT: '4000'
       DATABASE_URL: postgresql://${POSTGRES_USER:-vyuha}:${POSTGRES_PASSWORD:-vyuha_dev_password}@db:5432/${POSTGRES_DB:-vyuha}
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string-of-32-chars-or-more}
-      CORS_ORIGIN: http://localhost:8080
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Creates the demo accounts and Op Silent Ridge on start so a fresh stack is usable offline.
+      # Set to false once real accounts exist.
+      SEED_ON_START: ${SEED_ON_START:-true}
     ports:
       - '4000:4000'
 
@@ -37,6 +41,10 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Point at a self-hosted style/tile server for air-gapped sites (see docs/ARCHITECTURE.md).
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+        VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}
     restart: unless-stopped
     depends_on:
       - server

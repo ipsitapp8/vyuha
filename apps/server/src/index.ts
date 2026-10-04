@@ -5,6 +5,9 @@ import { buildDeps, prisma } from './db';
 async function main(): Promise<void> {
   const config = loadConfig();
   const { fastify, io, manager } = await buildApp(config, buildDeps(config));
+  if (config.NODE_ENV === 'production' && config.JWT_SECRET.startsWith('change-me')) {
+    fastify.log.warn('JWT_SECRET is the published placeholder: set JWT_SECRET before real use');
+  }
 
   const shutdown = async (): Promise<void> => {
     manager.shutdown();

@@ -13,4 +13,4 @@ WORKDIR /repo
 COPY --from=build /repo /repo
 ENV NODE_ENV=production
 EXPOSE 4000
-CMD ["sh", "-c", "pnpm --filter @vyuha/server db:deploy && pnpm --filter @vyuha/server start"]
+CMD ["sh", "-c", "pnpm --filter @vyuha/server db:deploy && if [ \"$SEED_ON_START\" = \"true\" ]; then pnpm --filter @vyuha/server db:seed; fi && pnpm --filter @vyuha/server start"]

@@ -73,3 +73,11 @@ After an instructor ends a session, open **Open after action review** on the God
 - **Exports** (instructor only): PDF report (`/aar/:id/export.pdf`), decisions CSV, full event log JSON.
 
 Test: `pnpm --filter @vyuha/server test` (AAR export and replay tests), `pnpm --filter @vyuha/engine test` (analysis rules), `pnpm --filter @vyuha/web test`.
+
+## Hardening and audit (Phase 9)
+
+- Server: helmet headers, exact CORS allow-list, 1 MiB body and 64 KiB socket limits, login/register throttling, log redaction (`LOG_LEVEL`).
+- Web: error boundary with reload and home actions.
+- Guards in the test suite: payload-leak test (no ground truth to trainees, instructor-only endpoints), engine performance budget (4 teams x 4 players, tick under 100 ms), replay equality.
+- End-to-end: `pnpm e2e` drives an instructor and two trainees in Chrome through spoof, end and PDF export. Needs `docker compose up -d db`, `pnpm db:migrate` and `pnpm db:seed`; it reuses servers already running on 4000 and 5173.
+- Docs: `docs/ARCHITECTURE.md` (design, security, air-gapped deployment) and `docs/DEMO_SCRIPT.md` (12-minute walkthrough).

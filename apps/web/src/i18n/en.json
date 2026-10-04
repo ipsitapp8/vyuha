@@ -693,5 +693,11 @@
     },
     "openReview": "Open after action review",
     "review": "Review"
+  },
+  "errorBoundary": {
+    "title": "Something broke on this screen",
+    "body": "The error was logged. Your exercise keeps running on the server, so reload to rejoin it.",
+    "reload": "Reload",
+    "home": "Go to start page"
   }
 }
