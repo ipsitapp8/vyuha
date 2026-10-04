@@ -100,3 +100,7 @@ The web app follows the layout of an Indian government portal so it is familiar 
 - **Skip to main content** link, landmarks, a visible 3 px keyboard focus, and dark-on-light status colours chosen for contrast.
 - English and Hindi, and a layout that works down to phone width.
 - The trainee cockpit keeps a single slim header so the map and panels have the room.
+
+## Deploying
+
+`render.yaml` is a Render Blueprint and the root `Dockerfile` builds one image holding the web app, the API (under `/api`) and the live socket, so a single service plus a PostgreSQL database is the whole deployment. Step by step instructions, settings and free-plan limits are in `docs/DEPLOY_RENDER.md`. The image was run against a fresh database and checked in a real browser: sign-in, deep links, team management, the live cockpit and map, and the PDF export.

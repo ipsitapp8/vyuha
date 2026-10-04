@@ -70,7 +70,10 @@ export function useSessionSocket(code: string | null): SessionLive {
 
   useEffect(() => {
     if (!code) return;
-    const socket = io(API_URL, { withCredentials: true });
+    // A relative API address (single-service deployment) means the socket lives on the page's own origin.
+    const socket = API_URL.startsWith('/')
+      ? io({ withCredentials: true })
+      : io(API_URL, { withCredentials: true });
     socketRef.current = socket;
 
     const join = (): void => {

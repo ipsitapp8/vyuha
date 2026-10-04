@@ -7,10 +7,13 @@ import { ingestScenarioGeo } from '../src/geo/ingest';
 import { createOpenMeteoNetwork } from '../src/geo/openMeteo';
 import { SILENT_RIDGE_ID, silentRidge } from '../src/seed/silentRidge';
 
+/** Demo accounts share one password. A public deployment sets SEED_PASSWORD so it is never the published one. */
+const DEMO_PASSWORD = process.env['SEED_PASSWORD'] ?? 'Vyuha@123';
+
 const INSTRUCTOR = {
   name: 'Col. Instructor',
   email: 'instructor@vyuha.local',
-  password: 'Vyuha@123',
+  password: DEMO_PASSWORD,
 };
 const TRAINEE_NAMES = [
   'Aarav Singh',
@@ -38,7 +41,7 @@ async function main(): Promise<void> {
     await prisma.user.upsert({
       where: { email },
       update: {},
-      create: { name, email, passwordHash: await hashPassword('Vyuha@123'), role: 'TRAINEE' },
+      create: { name, email, passwordHash: await hashPassword(DEMO_PASSWORD), role: 'TRAINEE' },
     });
   }
 

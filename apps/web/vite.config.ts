@@ -41,5 +41,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Rendering whole pages in jsdom is slow when the machine is busy (other builds, Docker); the default 5 s
+    // made the first test of a file fail by timeout alone.
+    testTimeout: 20_000,
   },
 });

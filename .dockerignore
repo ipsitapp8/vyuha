@@ -1,6 +1,12 @@
-node_modules
-**/node_modules
-**/dist
-.git
-.env
 **/.env
+**/dist
+**/node_modules
+*.log
+.env
+.git
+.tools
+coverage
+e2e
+node_modules
+playwright-report
+test-results
