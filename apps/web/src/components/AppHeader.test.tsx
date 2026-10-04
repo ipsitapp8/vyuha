@@ -46,13 +46,14 @@ describe('portal header', () => {
     expect(screen.getByRole('navigation', { name: 'Main menu' })).toBeInTheDocument();
   });
 
-  it('offers visitors Home, Sign in and Create an account', () => {
+  it('offers visitors Home, the two logins and account creation', () => {
     renderHeader();
     const menu = within(screen.getByRole('navigation', { name: 'Main menu' }));
     expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual([
       'Home',
-      'Sign in',
-      'Create an account',
+      'Instructor login',
+      'Trainee login',
+      'Create a trainee account',
     ]);
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
   });

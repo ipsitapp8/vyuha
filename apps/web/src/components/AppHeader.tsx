@@ -79,8 +79,9 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
   const links = !user
     ? [
         { to: '/', label: t('shell.nav.home'), end: true },
-        { to: '/login', label: t('auth.signInTitle'), end: false },
-        { to: '/register', label: t('auth.createAccount'), end: false },
+        { to: '/login/instructor', label: t('auth.portal.INSTRUCTOR.cta'), end: false },
+        { to: '/login/trainee', label: t('auth.portal.TRAINEE.cta'), end: false },
+        { to: '/register', label: t('auth.createTrainee'), end: false },
       ]
     : user.role === 'INSTRUCTOR'
       ? [

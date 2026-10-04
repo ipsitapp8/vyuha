@@ -14,11 +14,12 @@ async function apiLogin(request: APIRequestContext, email: string): Promise<void
 }
 
 async function signIn(page: Page, email: string): Promise<void> {
-  await page.goto('/login');
+  await page.goto(email.startsWith('instructor') ? '/login/instructor' : '/login/trainee');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL(/\/(trainee|instructor)$/);
+  // exact paths: "/login/instructor" also ends in "/instructor", so a loose pattern would match too early
+  await page.waitForURL((u) => ['/trainee', '/instructor'].includes(u.pathname));
 }
 
 test('instructor and trainees run a degraded-comms exercise and export the AAR', async ({
@@ -93,6 +94,10 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
   await section.getByLabel('Based on order (optional)').selectOption({ index: 1 });
   await section.getByLabel(/Rationale/).fill('Order looked like it came from HQ');
   await section.getByRole('button', { name: 'Submit decision' }).click();
+  // The server confirms it has queued the decision; the engine applies it on its next tick, so give
+  // it a few ticks before the instructor ends the exercise, or the decision could be left out of the review.
+  await expect(section.getByText('Decision recorded.')).toBeVisible();
+  await section.waitForTimeout(3000);
 
   // ---- end the exercise, open the review, export the PDF ----
   await instructorPage.getByRole('button', { name: 'End exercise' }).click();

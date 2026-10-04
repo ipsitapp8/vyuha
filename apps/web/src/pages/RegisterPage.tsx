@@ -74,7 +74,7 @@ export function RegisterPage() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             {t('auth.alreadyRegistered')}{' '}
-            <Link className="text-primary underline" to="/login">
+            <Link className="text-primary underline" to="/login/trainee">
               {t('auth.signInLink')}
             </Link>
           </p>

@@ -1,7 +1,6 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppHeader } from '@/components/AppHeader';
-import { Button } from '@/components/ui/button';
+import { PortalCards } from '@/components/PortalCards';
 
 const STEPS = ['1', '2', '3', '4', '5'] as const;
 
@@ -17,14 +16,15 @@ export function LandingPage() {
               {t('landing.heroTitle')}
             </h1>
             <p className="mt-4 max-w-3xl text-lg">{t('landing.heroBody')}</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link to="/login">{t('landing.signIn')}</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/register">{t('landing.createAccount')}</Link>
-              </Button>
-            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 pt-10" aria-labelledby="signin-title">
+          <h2 id="signin-title" className="border-b-2 border-primary pb-1 text-2xl font-bold">
+            {t('auth.chooseTitle')}
+          </h2>
+          <div className="mt-6">
+            <PortalCards />
           </div>
         </section>
 
@@ -43,22 +43,6 @@ export function LandingPage() {
               </li>
             ))}
           </ol>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-4 pb-4" aria-labelledby="who-title">
-          <h2 id="who-title" className="border-b-2 border-india-green pb-1 text-2xl font-bold">
-            {t('landing.whoTitle')}
-          </h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <article className="rounded border border-border p-5">
-              <h3 className="text-lg font-semibold text-primary">{t('landing.instructorTitle')}</h3>
-              <p className="mt-2">{t('landing.instructorBody')}</p>
-            </article>
-            <article className="rounded border border-border p-5">
-              <h3 className="text-lg font-semibold text-primary">{t('landing.traineeTitle')}</h3>
-              <p className="mt-2">{t('landing.traineeBody')}</p>
-            </article>
-          </div>
         </section>
       </main>
     </>

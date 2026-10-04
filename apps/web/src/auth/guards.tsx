@@ -41,7 +41,15 @@ export function RequireRole({ role }: { role?: Role }) {
       </Centered>
     );
   }
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!user) {
+    const to =
+      role === 'INSTRUCTOR'
+        ? '/login/instructor'
+        : role === 'TRAINEE'
+          ? '/login/trainee'
+          : '/login';
+    return <Navigate to={to} replace state={{ from: location.pathname }} />;
+  }
   if (role && user.role !== role) return <Navigate to={homePathFor(user.role)} replace />;
   return <Outlet />;
 }

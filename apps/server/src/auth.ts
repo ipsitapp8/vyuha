@@ -147,6 +147,10 @@ export function registerAuth(app: FastifyInstance, config: Config, users: UserRe
       if (!record || !ok) {
         return sendError(reply, 401, 'INVALID_CREDENTIALS', 'Incorrect email or password');
       }
+      // Said only after the password was right, so it does not reveal which emails exist.
+      if (parsed.data.portal && record.role !== parsed.data.portal) {
+        return sendError(reply, 403, 'FORBIDDEN', 'This account cannot sign in here');
+      }
       const user = toPublicUser(record);
       setAuthCookie(reply, config, user);
       const body: AuthResponse = { user };

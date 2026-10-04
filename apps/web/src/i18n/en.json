@@ -22,8 +22,6 @@
     "hi": "हिन्दी"
   },
   "landing": {
-    "signIn": "Sign in",
-    "createAccount": "Create an account",
     "heroTitle": "Decide right when communications go wrong",
     "heroBody": "VYUHA gives each commander a different, degraded view of one hidden battle. Messages arrive late, garbled or not at all, and some orders are fake. Trainees record what they decided, how sure they were and why. The instructor then reviews what each of them saw against what was true.",
     "howTitle": "How an exercise works",
@@ -66,7 +64,25 @@
     "fullName": "Full name",
     "creating": "Creating account…",
     "alreadyRegistered": "Already registered?",
-    "signInLink": "Sign in"
+    "signInLink": "Sign in",
+    "chooseTitle": "Choose how to sign in",
+    "portal": {
+      "INSTRUCTOR": {
+        "cta": "Instructor login",
+        "title": "Instructor sign in",
+        "intro": "For instructors who build scenarios, run exercises live and review them afterwards.",
+        "note": "Instructor accounts are issued by your training administrator. There is no self-registration.",
+        "wrongAccount": "This is not an instructor account. Trainees should use the trainee login.",
+        "switchPrompt": "Are you an instructor?"
+      },
+      "TRAINEE": {
+        "cta": "Trainee login",
+        "title": "Trainee sign in",
+        "intro": "For trainees who join an exercise with the 6-character code from their instructor.",
+        "wrongAccount": "This is not a trainee account. Instructors should use the instructor login.",
+        "switchPrompt": "Are you a trainee?"
+      }
+    }
   },
   "validation": {
     "email": "Enter a valid email address",

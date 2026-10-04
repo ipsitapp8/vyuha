@@ -8,6 +8,7 @@ import { CockpitPage } from './cockpit/CockpitPage';
 import { AarPage } from './pages/AarPage';
 import { MselAuthoringPage } from './pages/MselAuthoringPage';
 import { LandingPage } from './pages/LandingPage';
+import { LoginChooserPage } from './pages/LoginChooserPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProgressIndexPage, ProgressPage } from './pages/ProgressPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -22,7 +23,9 @@ export function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route element={<GuestOnly />}>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginChooserPage />} />
+          <Route path="/login/instructor" element={<LoginPage portal="INSTRUCTOR" />} />
+          <Route path="/login/trainee" element={<LoginPage portal="TRAINEE" />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
         <Route element={<RequireRole role="INSTRUCTOR" />}>

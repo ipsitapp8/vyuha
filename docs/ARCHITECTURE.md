@@ -50,7 +50,9 @@ AAR: the review shows truth and a trainee's perception at any tick without stori
 ## Security
 
 - Auth: bcrypt password hashes, JWT in an httpOnly `SameSite=Lax` cookie, roles `INSTRUCTOR` and
-  `TRAINEE`. Sockets authenticate with the same cookie.
+  `TRAINEE`. Sockets authenticate with the same cookie. There are two sign-in pages, `/login/instructor` and
+  `/login/trainee`; the page sends its portal with the credentials and the server refuses an account of the other role
+  (403, no cookie), only after the password was right. Instructor accounts are never self-registered.
 - `@fastify/helmet` headers on every API response; nginx adds nosniff, frame deny and no-referrer.
 - CORS is an exact allow-list (`CORS_ORIGIN`, comma separated). Wildcards and paths are refused at
   start-up.

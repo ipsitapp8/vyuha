@@ -19,7 +19,7 @@ pnpm install
 pnpm db:migrate              # prisma migrate dev
 pnpm dev                     # server :4000, web :5173
 ```
-Open http://localhost:5173. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
+Open http://localhost:5173 and choose **Instructor login** or **Trainee login** (demo accounts after `pnpm db:seed`: `instructor@vyuha.local` and `trainee1@vyuha.local` to `trainee3@vyuha.local`, password `Vyuha@123`). Trainees can create their own account; instructor accounts are issued by an administrator. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
 
 ## Full stack in Docker
 ```bash

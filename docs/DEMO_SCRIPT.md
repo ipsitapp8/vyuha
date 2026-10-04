@@ -8,8 +8,9 @@ weather; the events are synthetic and doctrinally plausible.
 1. `docker compose up -d db`, then `pnpm db:seed` (or `docker compose up --build` for the full stack).
 2. `pnpm dev` and open http://localhost:5173 (full-stack Docker: http://localhost:8080).
 3. Four browser windows: one instructor and three trainees (separate profiles or private windows).
-   Instructor `instructor@vyuha.local`, trainees `trainee1@vyuha.local` to `trainee3@vyuha.local`,
-   password `Vyuha@123`.
+   Instructor `instructor@vyuha.local` signs in at **Instructor login** (`/login/instructor`); trainees `trainee1@vyuha.local` to
+   `trainee3@vyuha.local` sign in at **Trainee login** (`/login/trainee`). Password for all: `Vyuha@123`. Each portal refuses
+   the other kind of account.
 
 ## 1. Set the scene (2 min)
 

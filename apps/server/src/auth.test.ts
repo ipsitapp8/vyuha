@@ -176,4 +176,42 @@ describe('role guard on GET /scenarios', () => {
     expect(ok.statusCode).toBe(200);
     expect(scenarioListResponseSchema.parse(ok.json()).scenarios).toHaveLength(1);
   });
+
+  it('keeps the two sign-in portals apart: the wrong kind of account is refused and not signed in', async () => {
+    const f = await setup();
+    await f.inject({ method: 'POST', url: '/auth/register', payload: creds });
+    const login = (email: string, portal?: 'INSTRUCTOR' | 'TRAINEE', password = 'Secret123') =>
+      f.inject({
+        method: 'POST',
+        url: '/auth/login',
+        payload: { email, password, ...(portal ? { portal } : {}) },
+      });
+
+    // a trainee cannot use the instructor portal, and gets no cookie
+    const wrongForTrainee = await login(creds.email, 'INSTRUCTOR');
+    expect(wrongForTrainee.statusCode).toBe(403);
+    expect(apiErrorSchema.parse(wrongForTrainee.json()).error.code).toBe('FORBIDDEN');
+    expect(wrongForTrainee.cookies.find((c) => c.name === AUTH_COOKIE_NAME)).toBeUndefined();
+
+    // an instructor cannot use the trainee portal
+    const wrongForInstructor = await login('i@vyuha.local', 'TRAINEE', 'Vyuha@123');
+    expect(wrongForInstructor.statusCode).toBe(403);
+    expect(wrongForInstructor.cookies.find((c) => c.name === AUTH_COOKIE_NAME)).toBeUndefined();
+
+    // the matching portal, and no portal at all, still work
+    expect((await login(creds.email, 'TRAINEE')).statusCode).toBe(200);
+    expect((await login('i@vyuha.local', 'INSTRUCTOR', 'Vyuha@123')).statusCode).toBe(200);
+    expect((await login(creds.email)).statusCode).toBe(200);
+
+    // a wrong password is a plain 401 whatever the portal, so the 403 never reveals an account
+    expect((await login(creds.email, 'INSTRUCTOR', 'nope-nope-1')).statusCode).toBe(401);
+    expect((await login('nobody@example.com', 'INSTRUCTOR')).statusCode).toBe(401);
+    // an unknown portal value is rejected
+    const bad = await f.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email: creds.email, password: 'Secret123', portal: 'ADMIN' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
 });
