@@ -107,6 +107,7 @@ export const aarSummarySchema = z.object({
       z.object({
         id: z.string(),
         name: z.string(),
+        isDemoBot: z.boolean(),
         role: playerRoleSchema,
         teamId: z.string(),
         unitId: z.string(),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +62,11 @@ export function TraineeHome() {
             {isSubmitting ? t('home.joining') : t('home.join')}
           </Button>
         </form>
+        <p className="mt-6 text-center">
+          <Link className="text-primary underline" to="/progress">
+            {t('progress.nav.trainee')}
+          </Link>
+        </p>
       </main>
     </>
   );

@@ -8,6 +8,7 @@ import {
   type TimelineItemDto,
 } from '@vyuha/shared';
 import type en from '@/i18n/en.json';
+import { botName } from '@/lib/demoBot';
 import { clock } from '@/lib/format';
 
 type RuleKey = `aar.learning.rules.${keyof typeof en.aar.learning.rules}`;
@@ -26,7 +27,7 @@ const ICON = {
 
 export function LearningList({ summary }: { summary: AarSummary }) {
   const { t } = useTranslation();
-  const names = new Map(summary.meta.players.map((p) => [p.id, p.name]));
+  const names = new Map(summary.meta.players.map((p) => [p.id, botName(t, p)]));
   const points = summary.analysis.learning;
   return (
     <section
@@ -99,7 +100,7 @@ export function timelineText(
 
 export function KeyEvents({ summary }: { summary: AarSummary }) {
   const { t } = useTranslation();
-  const names = new Map(summary.meta.players.map((p) => [p.id, p.name]));
+  const names = new Map(summary.meta.players.map((p) => [p.id, botName(t, p)]));
   const nameOf = (id: string | null): string =>
     id ? (names.get(id) ?? id) : t('aar.timelineSection.control');
   const items = summary.analysis.timeline;

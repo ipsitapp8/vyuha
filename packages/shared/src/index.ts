@@ -6,3 +6,4 @@ export * from './scenario';
 export * from './geo';
 export * from './session';
 export * from './aar';
+export * from './progress';

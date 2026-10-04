@@ -77,6 +77,7 @@ export const lobbyViewSchema = z.object({
       id: z.string(),
       userId: z.string(),
       name: z.string(),
+      isDemoBot: z.boolean(),
       teamId: z.string().nullable(),
       role: playerRoleSchema.nullable(),
       unitId: z.string().nullable(),

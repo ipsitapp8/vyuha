@@ -229,8 +229,24 @@ const lobby: LobbyView = {
   },
   teams: [],
   players: [
-    { id: 'p1', userId: 'u1', name: 'Asha', teamId: 't', role: 'PL_CDR', unitId: 'b-pl' },
-    { id: 'p2', userId: 'u2', name: 'Bilal', teamId: 't', role: 'SECTION_CDR', unitId: 'b-sec1' },
+    {
+      id: 'p1',
+      userId: 'u1',
+      name: 'Asha',
+      isDemoBot: false,
+      teamId: 't',
+      role: 'PL_CDR',
+      unitId: 'b-pl',
+    },
+    {
+      id: 'p2',
+      userId: 'u2',
+      name: 'Bilal',
+      isDemoBot: false,
+      teamId: 't',
+      role: 'SECTION_CDR',
+      unitId: 'b-sec1',
+    },
   ],
   units: [],
 };

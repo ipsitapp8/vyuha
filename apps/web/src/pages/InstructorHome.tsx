@@ -54,7 +54,12 @@ export function InstructorHome() {
       <AppHeader />
       <main className="mx-auto max-w-4xl px-4 py-6">
         <h1 className="mb-1 text-2xl font-semibold">{t('instructor.home.title')}</h1>
-        <p className="mb-6 text-muted-foreground">{t('instructor.home.intro')}</p>
+        <p className="mb-2 text-muted-foreground">{t('instructor.home.intro')}</p>
+        <p className="mb-6">
+          <Link className="text-primary underline" to="/progress">
+            {t('progress.nav.instructor')}
+          </Link>
+        </p>
 
         {state.kind === 'loading' ? (
           <p role="status">{t('instructor.home.loadingScenarios')}</p>

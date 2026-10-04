@@ -699,5 +699,54 @@
     "body": "The error was logged. Your exercise keeps running on the server, so reload to rejoin it.",
     "reload": "Reload",
     "home": "Go to start page"
+  },
+  "demoBot": {
+    "label": "Demo bot"
+  },
+  "progress": {
+    "title": "Progress",
+    "titleFor": "Progress of {{name}}",
+    "allTitle": "Trainee progress",
+    "back": "← Back",
+    "open": "View progress",
+    "pickTrainee": "Trainee",
+    "loading": "Loading progress…",
+    "loadFailed": "Could not load progress.",
+    "noTrainees": "No trainees yet.",
+    "help": "One point per finished session. Latency is seconds from the information arriving to the decision; \"under jamming\" counts only decisions taken while a channel was jammed.",
+    "needTwo": "Need 2+ sessions for a trend",
+    "sessionCount_one": "{{count}} session so far",
+    "sessionCount_other": "{{count}} sessions so far",
+    "noData": "Not measurable in these sessions.",
+    "axisSession": "Session",
+    "sessionLabel": "Session {{n}}",
+    "metric": {
+      "avgDecisionLatencyMs": "Average decision latency (s)",
+      "latencyUnderJammingMs": "Decision latency under jamming (s)",
+      "brierScore": "Brier score (lower is better)",
+      "spoofsChallengedPct": "Fake orders challenged (%)",
+      "reportGradingAccuracy": "Report grading accuracy (%)"
+    },
+    "delayCard": {
+      "title": "Session {{to}} vs session {{from}}: decision delay under jamming",
+      "detail": "From {{from}} s to {{to}} s (negative is faster)",
+      "unmeasurable": "No decisions under jamming in one of these sessions, so no comparison yet."
+    },
+    "brierCard": {
+      "title": "Brier score trend",
+      "improving": "improving",
+      "worsening": "worsening",
+      "flat": "steady",
+      "detail": "Latest {{latest}}, average {{average}} (lower is better)",
+      "unmeasurable": "Not enough scored decisions to show a trend."
+    },
+    "table": {
+      "title": "All sessions",
+      "date": "Date"
+    },
+    "nav": {
+      "instructor": "Trainee progress",
+      "trainee": "My progress"
+    }
   }
 }

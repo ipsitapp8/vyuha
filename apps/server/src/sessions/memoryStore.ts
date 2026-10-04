@@ -6,20 +6,31 @@ import {
   type EventRow,
   type GradeRow,
   type PlayerRow,
+  type SessionMetricRow,
   type SessionRow,
   type SessionStore,
   type StoredDecision,
   type TeamRow,
+  type TraineeBrief,
+  type UserProgressRow,
 } from './store';
+
+/** The user accounts a memory store can see (tests keep them in a Map). */
+export type MemoryUsers = ReadonlyMap<
+  string,
+  { id: string; name: string; role: string; isDemoBot?: boolean }
+>;
 
 /** In-memory SessionStore with the same semantics as the Prisma one (used by unit tests). */
 export function createMemorySessionStore(
   names: (userId: string) => string = (id) => id,
   titles: (scenarioId: string) => string = (id) => id,
+  users: () => MemoryUsers = () => new Map(),
 ): SessionStore & {
   events: Map<string, EventRow[]>;
   decisions: (StoredDecision & { sessionId: string })[];
   grades: GradeRow[];
+  metrics: SessionMetricRow[];
   failNextCommit(): void;
 } {
   const sessions = new Map<string, SessionRow>();
@@ -28,12 +39,14 @@ export function createMemorySessionStore(
   const events = new Map<string, EventRow[]>();
   const decisions: (StoredDecision & { sessionId: string })[] = [];
   const grades: GradeRow[] = [];
+  const metrics: SessionMetricRow[] = [];
   let failCommit = false;
 
   return {
     events,
     decisions,
     grades,
+    metrics,
     failNextCommit: () => {
       failCommit = true;
     },
@@ -120,6 +133,7 @@ export function createMemorySessionStore(
         sessionId,
         userId,
         userName: names(userId),
+        userIsDemoBot: users().get(userId)?.isDemoBot ?? false,
         teamId: null,
         role: null,
         unitId: null,
@@ -164,6 +178,36 @@ export function createMemorySessionStore(
     },
     async listDecisions(sessionId) {
       return decisions.filter((d) => d.sessionId === sessionId);
+    },
+    async saveSessionMetrics(rows) {
+      for (const r of rows) {
+        const at = metrics.findIndex((m) => m.sessionId === r.sessionId && m.userId === r.userId);
+        if (at >= 0) metrics[at] = { ...r };
+        else metrics.push({ ...r });
+      }
+    },
+    async listUserProgress(userId): Promise<UserProgressRow[]> {
+      return metrics
+        .filter((m) => m.userId === userId)
+        .sort((a, b) => a.endedAt.getTime() - b.endedAt.getTime())
+        .map((m) => {
+          const s = sessions.get(m.sessionId);
+          return { ...m, code: s?.code ?? '', scenarioTitle: s?.scenarioTitle ?? '' };
+        });
+    },
+    async getUserBrief(userId): Promise<TraineeBrief | null> {
+      const u = users().get(userId);
+      return u ? { id: u.id, name: u.name, isDemoBot: u.isDemoBot ?? false } : null;
+    },
+    async listTrainees() {
+      return [...users().values()]
+        .filter((u) => u.role === 'TRAINEE')
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          isDemoBot: u.isDemoBot ?? false,
+          sessionCount: metrics.filter((m) => m.userId === u.id).length,
+        }));
     },
     async loadEvents(sessionId, types) {
       return (events.get(sessionId) ?? []).filter((e) => types.includes(e.type));

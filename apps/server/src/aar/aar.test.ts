@@ -8,6 +8,7 @@ import {
   type PerceivedStateDto,
 } from '@vyuha/shared';
 import { csvCell, decisionsCsv } from './exports';
+import { describeProgress, displayName } from './pdf';
 import { closeEnv, makeEnv, setupLobby, type Env } from '../sessions/testenv';
 
 let env: Env | undefined;
@@ -317,6 +318,75 @@ describe('CSV helpers', () => {
       decisions: [],
     } as unknown as AarSummary;
     expect(decisionsCsv(summary).trim().split('\r\n')).toHaveLength(1);
+  });
+});
+
+describe('progress section of the PDF', () => {
+  const pdfText = async (x: Awaited<ReturnType<typeof finishedExercise>>): Promise<string> => {
+    const res = await x.env.app.fastify.inject({
+      method: 'GET',
+      url: `/aar/${x.sessionId}/export.pdf`,
+      headers: { cookie: await x.env.cookie(INST) },
+    });
+    return (await extractPdf(res.rawPayload)).text.replace(/\s+/g, ' ');
+  };
+
+  it('appears only for a trainee with two or more sessions', async () => {
+    const x = await finishedExercise();
+    expect(await pdfText(x)).not.toContain('Progress so far');
+
+    // An earlier session of the same trainee makes it two.
+    const ended = (await x.env.mem.sessions.getSession(x.sessionId))?.endedAt ?? new Date();
+    await x.env.mem.sessions.saveSessionMetrics([
+      {
+        userId: 'u-pl',
+        sessionId: 'earlier-session',
+        endedAt: new Date(ended.getTime() - 3_600_000),
+        avgDecisionLatencyMs: 60_000,
+        latencyUnderJammingMs: 80_000,
+        brierScore: 0.5,
+        spoofsChallengedPct: 0,
+        reportGradingAccuracy: 0.4,
+      },
+    ]);
+    const text = await pdfText(x);
+    expect(text).toContain('Progress so far (2 sessions)');
+    expect(text).toContain('Brier score trend');
+    expect(text.match(/Progress so far/g)).toHaveLength(1); // only Asha PL has two sessions
+  });
+
+  it('describes the 3rd-vs-1st delay change and the Brier trend', () => {
+    const session = (latency: number | null, brier: number | null, day: number) => ({
+      sessionId: `s${day}`,
+      code: 'ABC234',
+      scenarioTitle: 'Op',
+      endedAt: `2026-01-0${day}T10:00:00.000Z`,
+      metrics: {
+        avgDecisionLatencyMs: latency,
+        latencyUnderJammingMs: latency,
+        brierScore: brier,
+        spoofsChallengedPct: day === 1 ? 0 : 100,
+        reportGradingAccuracy: 0.75,
+      },
+    });
+    const d = describeProgress([
+      session(40_000, 0.5, 1),
+      session(35_000, 0.4, 2),
+      session(30_000, 0.2, 3),
+    ]);
+    expect(d.rows).toHaveLength(3);
+    expect(d.rows[0]).toEqual(['1', '2026-01-01', '40 s', '40 s', '0.50', '0%', '75%']);
+    expect(d.delay).toContain('session 3 vs session 1: -25%');
+    expect(d.brier).toBe('Brier score trend: improving (lower is better).');
+
+    const none = describeProgress([session(null, null, 1), session(null, null, 2)]);
+    expect(none.delay).toContain('not measurable');
+    expect(none.brier).toContain('not enough');
+  });
+
+  it('marks demo bots in the report', () => {
+    expect(displayName({ name: 'Asha', isDemoBot: true })).toBe('Asha (Demo bot)');
+    expect(displayName({ name: 'Asha', isDemoBot: false })).toBe('Asha');
   });
 });
 

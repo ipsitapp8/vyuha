@@ -8,6 +8,7 @@ import { AarPage } from './pages/AarPage';
 import { MselAuthoringPage } from './pages/MselAuthoringPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { ProgressIndexPage, ProgressPage } from './pages/ProgressPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { TraineeHome } from './pages/TraineeHome';
 
@@ -26,6 +27,10 @@ export function App() {
         <Route path="/instructor/sessions/:id" element={<InstructorSessionPage />} />
         <Route path="/instructor/session/:id" element={<InstructorSessionPage />} />
         <Route path="/aar/:sessionId" element={<AarPage />} />
+      </Route>
+      <Route element={<RequireRole />}>
+        <Route path="/progress" element={<ProgressIndexPage />} />
+        <Route path="/progress/:userId" element={<ProgressPage />} />
       </Route>
       <Route element={<RequireRole role="TRAINEE" />}>
         <Route path="/trainee" element={<TraineeHome />} />

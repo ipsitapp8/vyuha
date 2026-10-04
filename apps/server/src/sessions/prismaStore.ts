@@ -16,7 +16,9 @@ const json = (v: unknown): Prisma.InputJsonValue => v as Prisma.InputJsonValue;
 type SessionWithScenario = Prisma.SessionGetPayload<{
   include: { scenario: { select: { title: true } } };
 }>;
-type PlayerWithUser = Prisma.PlayerGetPayload<{ include: { user: { select: { name: true } } } }>;
+type PlayerWithUser = Prisma.PlayerGetPayload<{
+  include: { user: { select: { name: true; isDemoBot: true } } };
+}>;
 
 const sessionRow = (s: SessionWithScenario): SessionRow => ({
   id: s.id,
@@ -48,13 +50,14 @@ const playerRow = (p: PlayerWithUser): PlayerRow => ({
   sessionId: p.sessionId,
   userId: p.userId,
   userName: p.user.name,
+  userIsDemoBot: p.user.isDemoBot,
   teamId: p.teamId,
   role: p.role,
   unitId: p.unitId,
 });
 
 const withScenario = { scenario: { select: { title: true } } } as const;
-const withUser = { user: { select: { name: true } } } as const;
+const withUser = { user: { select: { name: true, isDemoBot: true } } } as const;
 
 const isCode = (err: unknown, code: string): boolean =>
   err instanceof Prisma.PrismaClientKnownRequestError && err.code === code;
@@ -217,6 +220,56 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
         perceivedSnapshot: r.perceivedSnapshot,
         truthSnapshot: r.truthSnapshot,
         latencyMs: r.latencyMs,
+      }));
+    },
+    async saveSessionMetrics(rows) {
+      await prisma.$transaction(
+        rows.map((r) =>
+          prisma.sessionMetric.upsert({
+            where: { sessionId_userId: { sessionId: r.sessionId, userId: r.userId } },
+            create: r,
+            update: r,
+          }),
+        ),
+      );
+    },
+    async listUserProgress(userId) {
+      const rows = await prisma.sessionMetric.findMany({
+        where: { userId },
+        orderBy: [{ endedAt: 'asc' }, { id: 'asc' }],
+        include: { session: { select: { code: true, scenario: { select: { title: true } } } } },
+      });
+      return rows.map((r) => ({
+        userId: r.userId,
+        sessionId: r.sessionId,
+        endedAt: r.endedAt,
+        avgDecisionLatencyMs: r.avgDecisionLatencyMs,
+        latencyUnderJammingMs: r.latencyUnderJammingMs,
+        brierScore: r.brierScore,
+        spoofsChallengedPct: r.spoofsChallengedPct,
+        reportGradingAccuracy: r.reportGradingAccuracy,
+        code: r.session.code,
+        scenarioTitle: r.session.scenario.title,
+      }));
+    },
+    async getUserBrief(userId) {
+      const u = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, isDemoBot: true },
+      });
+      return u;
+    },
+    async listTrainees() {
+      const users = await prisma.user.findMany({
+        where: { role: 'TRAINEE' },
+        orderBy: [{ isDemoBot: 'asc' }, { name: 'asc' }],
+        select: { id: true, name: true, isDemoBot: true, _count: { select: { metrics: true } } },
+      });
+      return users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        isDemoBot: u.isDemoBot,
+        sessionCount: u._count.metrics,
       }));
     },
     async loadEvents(sessionId, types) {

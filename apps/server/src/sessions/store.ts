@@ -25,6 +25,8 @@ export interface PlayerRow {
   sessionId: string;
   userId: string;
   userName: string;
+  /** Scripted demo trainee (see `pnpm demo:history`). */
+  userIsDemoBot: boolean;
   teamId: string | null;
   role: PlayerRole | null;
   unitId: string | null;
@@ -58,6 +60,26 @@ export interface GradeRow {
   gradedCredibility: number;
   trueReliability: string;
   trueCredibility: number;
+}
+
+/** Progress numbers for one trainee in one ended session. Null = not measurable in that session. */
+export interface SessionMetricRow {
+  userId: string;
+  sessionId: string;
+  endedAt: Date;
+  avgDecisionLatencyMs: number | null;
+  latencyUnderJammingMs: number | null;
+  brierScore: number | null;
+  spoofsChallengedPct: number | null;
+  reportGradingAccuracy: number | null;
+}
+
+export type UserProgressRow = SessionMetricRow & { code: string; scenarioTitle: string };
+
+export interface TraineeBrief {
+  id: string;
+  name: string;
+  isDemoBot: boolean;
 }
 
 export interface BatchCommit {
@@ -109,4 +131,12 @@ export interface SessionStore {
   /** Every event of a session in the order it happened (for the after action review). */
   loadAllEvents(sessionId: string): Promise<EventRow[]>;
   listDecisions(sessionId: string): Promise<StoredDecision[]>;
+
+  /** Stores one row per trainee for an ended session; saving a session again replaces its rows. */
+  saveSessionMetrics(rows: SessionMetricRow[]): Promise<void>;
+  /** A trainee's metrics for every ended session, oldest first. */
+  listUserProgress(userId: string): Promise<UserProgressRow[]>;
+  getUserBrief(userId: string): Promise<TraineeBrief | null>;
+  /** Every trainee account with the number of sessions that have metrics. */
+  listTrainees(): Promise<(TraineeBrief & { sessionCount: number })[]>;
 }

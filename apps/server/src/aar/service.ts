@@ -12,7 +12,7 @@ import { HttpError } from '../errors';
 import { inputsFromLog, startedPayloadSchema } from '../sessions/manager';
 import type { EventRow, SessionStore, StoredDecision } from '../sessions/store';
 import { decisionsCsv, fullLogJson } from './exports';
-import { renderAarPdf } from './pdf';
+import { renderAarPdf, type ProgressByPlayer } from './pdf';
 import { Replayer } from './replayer';
 
 const decisionPayloadSchema = z.object({
@@ -63,6 +63,35 @@ export class AarService {
     return pending;
   }
 
+  /** Each trainee's sessions so far (up to and including this one), for the "Progress so far" section. */
+  private async progressByPlayer(sessionId: string): Promise<ProgressByPlayer> {
+    const [playerRows, session] = await Promise.all([
+      this.store.listPlayers(sessionId),
+      this.store.getSession(sessionId),
+    ]);
+    const until = session?.endedAt?.getTime() ?? Number.POSITIVE_INFINITY;
+    const out: ProgressByPlayer = {};
+    for (const p of playerRows) {
+      const rows = (await this.store.listUserProgress(p.userId)).filter(
+        (r) => r.endedAt.getTime() <= until,
+      );
+      out[p.id] = rows.map((r) => ({
+        sessionId: r.sessionId,
+        code: r.code,
+        scenarioTitle: r.scenarioTitle,
+        endedAt: r.endedAt.toISOString(),
+        metrics: {
+          avgDecisionLatencyMs: r.avgDecisionLatencyMs,
+          latencyUnderJammingMs: r.latencyUnderJammingMs,
+          brierScore: r.brierScore,
+          spoofsChallengedPct: r.spoofsChallengedPct,
+          reportGradingAccuracy: r.reportGradingAccuracy,
+        },
+      }));
+    }
+    return out;
+  }
+
   private async build(sessionId: string): Promise<AarData> {
     const session = await this.store.getSession(sessionId);
     if (!session) throw new HttpError(404, 'SESSION_NOT_FOUND', 'Session not found');
@@ -83,9 +112,11 @@ export class AarService {
     const p = startedPayloadSchema.parse(started.payload);
 
     const names = new Map(playerRows.map((r) => [r.id, r.userName]));
+    const bots = new Map(playerRows.map((r) => [r.id, r.userIsDemoBot]));
     const players = p.roster.players.map((r) => ({
       id: r.id,
       name: names.get(r.id) ?? r.id,
+      isDemoBot: bots.get(r.id) ?? false,
       role: r.role,
       teamId: r.teamId,
       unitId: r.unitId,
@@ -186,7 +217,10 @@ export class AarService {
 
   async pdf(sessionId: string): Promise<{ filename: string; body: Buffer }> {
     const { summary } = await this.data(sessionId);
-    return { filename: `vyuha-aar-${summary.meta.code}.pdf`, body: await renderAarPdf(summary) };
+    return {
+      filename: `vyuha-aar-${summary.meta.code}.pdf`,
+      body: await renderAarPdf(summary, await this.progressByPlayer(sessionId)),
+    };
   }
 }
 

@@ -138,13 +138,13 @@ const zeroChannels = (): Record<Channel, number> => ({
   RUNNER: 0,
 });
 
-interface JamStep {
+export interface JamStep {
   tick: number;
   jamming: Record<Channel, number>;
   satcomUp: boolean;
 }
 
-function jamSteps(events: readonly EngineEvent[]): JamStep[] {
+export function jamSteps(events: readonly EngineEvent[]): JamStep[] {
   const steps: JamStep[] = [{ tick: 0, jamming: zeroChannels(), satcomUp: true }];
   for (const e of events) {
     if (e.type !== 'JAMMING_CHANGED') continue;
@@ -158,7 +158,7 @@ function jamSteps(events: readonly EngineEvent[]): JamStep[] {
   return steps;
 }
 
-const jamAt = (steps: readonly JamStep[], tick: number): JamStep => {
+export const jamAt = (steps: readonly JamStep[], tick: number): JamStep => {
   let cur = steps[0] as JamStep;
   for (const s of steps) {
     if (s.tick <= tick) cur = s;

@@ -10,6 +10,7 @@ import { KeyEvents, LearningList } from '@/aar/LearningPoints';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { DemoBotBadge } from '@/lib/demoBot';
 import { clock } from '@/lib/format';
 import { apiErrorText } from '@/lib/messages';
 
@@ -75,6 +76,7 @@ export function AarPage() {
 function Review({ summary }: { summary: AarSummary }) {
   const { t } = useTranslation();
   const { meta, analysis } = summary;
+  const bots = new Set(meta.players.filter((p) => p.isDemoBot).map((p) => p.id));
   return (
     <div className="mt-2 flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -125,7 +127,10 @@ function Review({ summary }: { summary: AarSummary }) {
             <tbody>
               {analysis.players.map((p) => (
                 <tr key={p.playerId} className="border-t border-border">
-                  <td className="p-1 font-medium">{p.name}</td>
+                  <td className="p-1 font-medium">
+                    {p.name}
+                    {bots.has(p.playerId) ? <DemoBotBadge /> : null}
+                  </td>
                   <td className="p-1">
                     {t(`roles.${p.role}` as 'roles.PL_CDR', { defaultValue: p.role })}
                   </td>

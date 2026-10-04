@@ -101,6 +101,7 @@ export class LobbyService {
         id: p.id,
         userId: p.userId,
         name: p.userName,
+        isDemoBot: p.userIsDemoBot,
         teamId: p.teamId,
         role: p.role,
         unitId: p.unitId,

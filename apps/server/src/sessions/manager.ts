@@ -235,6 +235,8 @@ export class SessionManager {
     private readonly io: SocketServer,
     private readonly log: ManagerLogger,
     private readonly sched: Scheduler = realScheduler,
+    /** Runs after a started session has ended and its last events are stored (progress metrics). */
+    private readonly onEnded: (sessionId: string) => Promise<void> = async () => undefined,
   ) {}
 
   // ---- lifecycle ------------------------------------------------------------------------
@@ -334,6 +336,7 @@ export class SessionManager {
         endedAt: new Date(this.sched.now()),
       });
       await this.logLifecycle(rt, 'SESSION_ENDED');
+      await this.onEnded(sessionId);
       this.emitStatus(rt);
       this.runtimes.delete(sessionId);
       return row;

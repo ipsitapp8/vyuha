@@ -12,3 +12,4 @@ export * from './metrics';
 export * from './step';
 export * from './replay';
 export * from './aar';
+export * from './progress';

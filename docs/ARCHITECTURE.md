@@ -43,6 +43,10 @@ instructor injects are logged as input events. After a server restart a running 
 by replaying the inputs through the engine (`SessionManager.resumeAll`). The same replay powers the
 AAR: the review shows truth and a trainee's perception at any tick without storing extra snapshots.
 
+## Progress across sessions
+
+`ProgressService` (apps/server/src/progress) runs when a started session ends. It feeds the stored events and decisions to `computeProgressMetrics` (packages/engine/src/progress.ts, built on `computeMetrics`) and upserts one `SessionMetric` row per trainee, so re-recording a session never duplicates rows. Null means a metric could not be measured in that session (for example no decision was taken under jamming). The trend maths (`percentChange`, `compareToFirst`, `brierTrend`, `average`) lives next to it and is unit tested. `GET /progress/:userId` is open to the trainee themself and to instructors; `GET /progress/trainees` is instructor only. The demo bots in `apps/server/src/demo` are ordinary players driven through the normal action path, flagged by `User.isDemoBot`.
+
 ## Security
 
 - Auth: bcrypt password hashes, JWT in an httpOnly `SameSite=Lax` cookie, roles `INSTRUCTOR` and

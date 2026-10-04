@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { DemoBotBadge } from '@/lib/demoBot';
 import type { LobbyView, TruthViewDto } from '@vyuha/shared';
 import { Button } from '@/components/ui/button';
 import { clock } from '@/lib/format';
@@ -36,7 +37,10 @@ export function TraineeCards({ lobby, truth, watchedId, onWatch }: Props) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold">{p.name}</p>
+                  <p className="font-semibold">
+                    {p.name}
+                    {p.isDemoBot ? <DemoBotBadge /> : null}
+                  </p>
                   <p className="text-muted-foreground">
                     {p.role ? t(`roles.${p.role}`) : ''} ·{' '}
                     {lobby.teams.find((x) => x.id === p.teamId)?.name ?? ''}

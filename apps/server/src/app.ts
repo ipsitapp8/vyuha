@@ -8,6 +8,8 @@ import type { Config } from './config';
 import { registerAarRoutes } from './aar/routes';
 import { AarService } from './aar/service';
 import { registerAuth } from './auth';
+import { registerProgressRoutes } from './progress/routes';
+import { ProgressService } from './progress/service';
 import { registerScenarioRoutes } from './scenarioRoutes';
 import { sendError } from './errors';
 import { registerGeoRoutes } from './geo/routes';
@@ -116,6 +118,7 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
     maxHttpBufferSize: SOCKET_MAX_BYTES,
   });
   const lobby = new LobbyService(deps.sessions, deps.scenarios);
+  const progress = new ProgressService(deps.sessions, fastify.log);
   const manager = new SessionManager(
     deps.sessions,
     deps.scenarios,
@@ -124,9 +127,11 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
     io,
     fastify.log,
     options.scheduler,
+    (sessionId) => progress.recordSession(sessionId),
   );
   registerSessionRoutes(fastify, guards, deps.sessions, lobby, manager);
   registerAarRoutes(fastify, guards, new AarService(deps.sessions));
+  registerProgressRoutes(fastify, guards, progress);
   attachSocketHandlers(
     io,
     config,

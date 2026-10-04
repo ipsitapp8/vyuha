@@ -50,6 +50,7 @@ export function createMemoryDeps(
   const sessions = createMemorySessionStore(
     (id) => users.get(id)?.name ?? id,
     (id) => definitions[id]?.title ?? id,
+    () => users,
   );
   const deps: Deps = {
     db: { ping: async () => true },

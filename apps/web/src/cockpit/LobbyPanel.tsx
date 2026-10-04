@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DemoBotBadge } from '@/lib/demoBot';
 import { PaceEditor } from '@/components/PaceEditor';
 import type { LobbyView } from '@vyuha/shared';
 import { api } from '@/lib/api';
@@ -64,6 +65,7 @@ export function LobbyPanel({ lobby, playerId }: { lobby: LobbyView; playerId: st
           {lobby.players.map((p) => (
             <li key={p.id}>
               {p.name}
+              {p.isDemoBot ? <DemoBotBadge /> : null}
               {p.id === playerId ? ` ${t('cockpit.lobby.you')}` : ''}
               <span className="text-muted-foreground">
                 {' '}

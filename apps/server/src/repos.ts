@@ -5,6 +5,8 @@ import type { Inject, PublicUser, Role, ScenarioDefinition, ScenarioSummary } fr
 
 export interface UserRecord extends PublicUser {
   passwordHash: string;
+  /** Scripted demo trainee; never signs in. */
+  isDemoBot?: boolean;
 }
 
 export class EmailTakenError extends Error {

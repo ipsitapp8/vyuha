@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { AarDecisionDetail, AarSnapshot, AarSummary } from '@vyuha/shared';
 import { CockpitMap } from '@/cockpit/CockpitMap';
 import { Select } from '@/components/Select';
+import { botName } from '@/lib/demoBot';
 import { Button } from '@/components/ui/button';
 import { TruthMap } from '@/instructor/TruthMap';
 import { api } from '@/lib/api';
@@ -124,7 +125,7 @@ export function GhostReplay({ summary }: { summary: AarSummary }) {
         <Select
           label={t('aar.replay.trainee')}
           value={playerId}
-          options={players.map((p) => ({ value: p.id, label: p.name }))}
+          options={players.map((p) => ({ value: p.id, label: botName(t, p) }))}
           onChange={setPlayerId}
         />
         <Button

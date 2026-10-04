@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
+import { brierTrend, compareToFirst } from '@vyuha/engine';
 import {
   APP_NAME,
   APP_TAGLINE,
@@ -9,6 +10,7 @@ import {
   learningTextEn,
   type AarSummary,
   type LearningPointDto,
+  type ProgressSession,
   type TimelineItemDto,
 } from '@vyuha/shared';
 import { BarChartPdf, LineChartPdf, type Series } from './pdfCharts';
@@ -115,6 +117,68 @@ function Mixed({ text, style }: { text: string; style?: PdfStyle }) {
 const fmt = (v: number | null, digits = 0, suffix = ''): string =>
   v === null ? '–' : `${v.toFixed(digits)}${suffix}`;
 
+/** Progress per player id: their sessions so far, oldest first (the current one included). */
+export type ProgressByPlayer = Record<string, ProgressSession[]>;
+
+/** Name as shown in the report: scripted demo trainees are always marked. */
+export const displayName = (p: { name: string; isDemoBot: boolean }): string =>
+  p.isDemoBot ? `${p.name} (Demo bot)` : p.name;
+
+const seconds = (ms: number | null): string => (ms === null ? '–' : `${(ms / 1000).toFixed(0)} s`);
+
+/** The rows and the two trend sentences of the "Progress so far" section. */
+export function describeProgress(sessions: readonly ProgressSession[]): {
+  rows: string[][];
+  delay: string;
+  brier: string;
+} {
+  const rows = sessions.map((x, i) => [
+    String(i + 1),
+    x.endedAt.slice(0, 10),
+    seconds(x.metrics.avgDecisionLatencyMs),
+    seconds(x.metrics.latencyUnderJammingMs),
+    fmt(x.metrics.brierScore, 2),
+    x.metrics.spoofsChallengedPct === null ? '–' : `${Math.round(x.metrics.spoofsChallengedPct)}%`,
+    x.metrics.reportGradingAccuracy === null
+      ? '–'
+      : `${Math.round(x.metrics.reportGradingAccuracy * 100)}%`,
+  ]);
+  const cmp = compareToFirst(sessions.map((x) => x.metrics.latencyUnderJammingMs));
+  const delay =
+    cmp?.changePct == null
+      ? 'Decision delay under jamming: not measurable in both sessions compared.'
+      : `Decision delay under jamming, session ${cmp.toSession} vs session ${cmp.fromSession}: ${cmp.changePct > 0 ? '+' : ''}${cmp.changePct.toFixed(0)}% (lower is better).`;
+  const trend = brierTrend(sessions.map((x) => x.metrics.brierScore));
+  const brier =
+    trend === null
+      ? 'Brier score trend: not enough scored sessions.'
+      : `Brier score trend: ${trend} (lower is better).`;
+  return { rows, delay, brier };
+}
+
+function ProgressSection({ sessions }: { sessions: readonly ProgressSession[] }) {
+  const { rows, delay, brier } = describeProgress(sessions);
+  return (
+    <View wrap={false}>
+      <Text style={s.h2}>{`Progress so far (${sessions.length} sessions)`}</Text>
+      <Table
+        cols={[
+          { label: '#', w: 6 },
+          { label: 'Date', w: 16 },
+          { label: 'Avg latency', w: 15, align: 'right' },
+          { label: 'Under jamming', w: 17, align: 'right' },
+          { label: 'Brier', w: 10, align: 'right' },
+          { label: 'Spoofs challenged', w: 20, align: 'right' },
+          { label: 'Grading', w: 16, align: 'right' },
+        ]}
+        rows={rows}
+      />
+      <Text style={[s.muted, { marginTop: 3 }]}>{delay}</Text>
+      <Text style={s.muted}>{brier}</Text>
+    </View>
+  );
+}
+
 export function describeTimeline(
   item: TimelineItemDto,
   nameOf: (id: string | null) => string,
@@ -194,7 +258,10 @@ function Table({
     <View>
       <View style={[s.row, { borderBottomColor: '#52525b' }]} fixed>
         {cols.map((c) => (
-          <Text key={c.label} style={[s.th, { width: `${c.w}%`, textAlign: c.align }]}>
+          <Text
+            key={c.label}
+            style={[s.th, { width: `${c.w}%`, textAlign: c.align, paddingRight: 5 }]}
+          >
             {c.label}
           </Text>
         ))}
@@ -202,7 +269,7 @@ function Table({
       {rows.map((r, i) => (
         <View key={i} style={s.row} wrap={false}>
           {r.map((cell, j) => (
-            <View key={j} style={{ width: `${cols[j]?.w ?? 10}%` }}>
+            <View key={j} style={{ width: `${cols[j]?.w ?? 10}%`, paddingRight: 5 }}>
               {typeof cell === 'string' ? (
                 <Mixed text={cell} style={{ textAlign: cols[j]?.align }} />
               ) : (
@@ -216,9 +283,9 @@ function Table({
   );
 }
 
-function AarDocument({ summary }: { summary: AarSummary }) {
+function AarDocument({ summary, progress }: { summary: AarSummary; progress: ProgressByPlayer }) {
   const { meta, analysis, decisions } = summary;
-  const nameMap = new Map(meta.players.map((p) => [p.id, p.name]));
+  const nameMap = new Map(meta.players.map((p) => [p.id, displayName(p)]));
   const nameOf = (id: string | null): string => (id ? (nameMap.get(id) ?? id) : 'Exercise control');
   const colorOf = new Map(
     meta.players.map((p, i) => [p.id, PALETTE[i % PALETTE.length] ?? '#4b5563']),
@@ -426,7 +493,7 @@ function AarDocument({ summary }: { summary: AarSummary }) {
         const mine = decisions.filter((d) => d.playerId === p.id);
         return (
           <Page key={p.id} size="A4" style={s.page}>
-            <Mixed text={p.name} style={s.h1} />
+            <Mixed text={displayName(p)} style={s.h1} />
             <Text style={[s.muted, { marginBottom: 6 }]}>
               {p.role} · Team {teamName.get(p.teamId) ?? p.teamId} · Unit {p.unitId}
             </Text>
@@ -454,6 +521,9 @@ function AarDocument({ summary }: { summary: AarSummary }) {
                 </View>
               ))}
             </View>
+            {(progress[p.id]?.length ?? 0) >= 2 ? (
+              <ProgressSection sessions={progress[p.id] ?? []} />
+            ) : null}
             <Text style={s.h2}>Learning points</Text>
             <LearningList points={learningFor(p.id)} nameOf={nameOf} />
             <Text style={s.h2}>Decisions</Text>
@@ -529,7 +599,10 @@ function AarDocument({ summary }: { summary: AarSummary }) {
 }
 
 /** Renders the report to a PDF (A4, embedded Noto Sans fonts so it also works fully offline). */
-export async function renderAarPdf(summary: AarSummary): Promise<Buffer> {
+export async function renderAarPdf(
+  summary: AarSummary,
+  progress: ProgressByPlayer = {},
+): Promise<Buffer> {
   registerFonts();
-  return renderToBuffer(<AarDocument summary={summary} />);
+  return renderToBuffer(<AarDocument summary={summary} progress={progress} />);
 }

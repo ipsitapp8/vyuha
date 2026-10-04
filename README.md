@@ -84,3 +84,9 @@ Test: `pnpm --filter @vyuha/server test` (AAR export and replay tests), `pnpm --
 - Guards in the test suite: payload-leak test (no ground truth to trainees, instructor-only endpoints), engine performance budget (4 teams x 4 players, tick under 100 ms), replay equality.
 - End-to-end: `pnpm e2e` drives an instructor and two trainees in Chrome through spoof, end and PDF export. Needs `docker compose up -d db`, `pnpm db:migrate` and `pnpm db:seed`; it reuses servers already running on 4000 and 5173.
 - Docs: `docs/ARCHITECTURE.md` (design, security, air-gapped deployment) and `docs/DEMO_SCRIPT.md` (12-minute walkthrough).
+
+## Progress across sessions
+
+When a session ends, the server computes five numbers per trainee from its event log and decisions and stores them in `SessionMetric`: average decision latency, latency under jamming (decisions taken while any channel was jammed 30% or more), Brier score, share of fake orders challenged with Authenticate, and report grading accuracy. `/progress/:userId` charts them across sessions, with a "3rd session vs 1st session" change in decision delay under jamming and a Brier trend arrow; with fewer than 2 sessions it says "Need 2+ sessions for a trend". An instructor sees every trainee (`/progress`), a trainee only themself. The AAR PDF adds a "Progress so far" section for trainees with 2+ sessions.
+
+**Demo history without faking anything:** `pnpm demo:history` plays three real Op Silent Ridge exercises through the normal lobby, session manager and metric recording, with three scripted bot trainees (`apps/server/src/demo`) who get faster and start authenticating the fake order. The engine scores what they did, so no metric is typed in by hand. Runs are deterministic. The bots are flagged `isDemoBot` and shown as "Demo bot" everywhere. Needs the database seeded (`pnpm db:migrate && pnpm db:seed`). `pnpm demo:history -- --reset` removes the bots' sessions and plays them again.

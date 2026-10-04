@@ -27,14 +27,17 @@ enum PlayerRole {
 }
 
 model User {
-  id           String     @id @default(cuid())
+  id           String          @id @default(cuid())
   name         String
-  email        String     @unique
+  email        String          @unique
   passwordHash String
   role         Role
-  createdAt    DateTime   @default(now())
+  /// Scripted demo trainee created by `pnpm demo:history`; shown as "Demo bot" in the UI.
+  isDemoBot    Boolean         @default(false)
+  createdAt    DateTime        @default(now())
   scenarios    Scenario[]
   players      Player[]
+  metrics      SessionMetric[]
 }
 
 model Scenario {
@@ -73,14 +76,14 @@ model WeatherSnapshot {
 }
 
 model Session {
-  id                 String         @id @default(cuid())
+  id                 String          @id @default(cuid())
   scenarioId         String
-  scenario           Scenario       @relation(fields: [scenarioId], references: [id])
-  code               String         @unique
-  status             SessionStatus  @default(LOBBY)
-  speed              Int            @default(1)
-  currentTick        Int            @default(0)
-  createdAt          DateTime       @default(now())
+  scenario           Scenario        @relation(fields: [scenarioId], references: [id])
+  code               String          @unique
+  status             SessionStatus   @default(LOBBY)
+  speed              Int             @default(1)
+  currentTick        Int             @default(0)
+  createdAt          DateTime        @default(now())
   startedAt          DateTime?
   endedAt            DateTime?
   degradationProfile Json
@@ -88,6 +91,7 @@ model Session {
   players            Player[]
   events             SessionEvent[]
   decisions          Decision[]
+  metrics            SessionMetric[]
 }
 
 model Team {
@@ -155,4 +159,23 @@ model ReportGrade {
   gradedCredibility Int
   trueReliability   String
   trueCredibility   Int
+}
+
+/// One row per trainee per ended session: the numbers behind the progress charts. Null = not measurable
+/// in that session (for example no decision was taken under jamming).
+model SessionMetric {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId             String
+  session               Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  endedAt               DateTime
+  avgDecisionLatencyMs  Float?
+  latencyUnderJammingMs Float?
+  brierScore            Float?
+  spoofsChallengedPct   Float?
+  reportGradingAccuracy Float?
+
+  @@unique([sessionId, userId])
+  @@index([userId, endedAt])
 }

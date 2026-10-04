@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { DemoBotBadge } from '@/lib/demoBot';
 import {
   playerRoleSchema,
   type LobbyView,
@@ -59,7 +60,10 @@ export function LobbyEditor({ lobby, busy, teamName, setTeamName, run }: Props) 
                   key={p.id}
                   className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_1fr_1.4fr_auto]"
                 >
-                  <span className="font-medium">{p.name}</span>
+                  <span className="font-medium">
+                    {p.name}
+                    {p.isDemoBot ? <DemoBotBadge /> : null}
+                  </span>
                   <Select
                     label={t('god.lobby.teamFor', { name: p.name })}
                     hideLabel

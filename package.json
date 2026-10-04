@@ -18,7 +18,8 @@
     "db:migrate": "pnpm --filter @vyuha/server db:migrate",
     "db:seed": "pnpm --filter @vyuha/server db:seed",
     "e2e": "playwright test",
-    "typecheck:e2e": "tsc -p e2e/tsconfig.json"
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json",
+    "demo:history": "pnpm --filter @vyuha/server demo:history"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -16,8 +16,15 @@ export function aarSummary(): AarSummary {
       durationTicks: 600,
       teams: [{ id: 't1', name: 'Alpha', primary: 'VHF' }],
       players: [
-        { id: 'p1', name: 'Asha', role: 'PL_CDR', teamId: 't1', unitId: 'b-pl' },
-        { id: 'p2', name: 'Bilal', role: 'SECTION_CDR', teamId: 't1', unitId: 'b-sec' },
+        { id: 'p1', name: 'Asha', isDemoBot: false, role: 'PL_CDR', teamId: 't1', unitId: 'b-pl' },
+        {
+          id: 'p2',
+          name: 'Bilal',
+          isDemoBot: false,
+          role: 'SECTION_CDR',
+          teamId: 't1',
+          unitId: 'b-sec',
+        },
       ],
       areaBounds: { south: 34, west: 77, north: 35, east: 78 },
     },

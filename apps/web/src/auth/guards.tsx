@@ -16,8 +16,8 @@ function Centered({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Gate: renders children only for signed-in users with an allowed role. */
-export function RequireRole({ role }: { role: Role }) {
+/** Gate: renders children only for signed-in users; with `role`, only for that role. */
+export function RequireRole({ role }: { role?: Role }) {
   const { t } = useTranslation();
   const { status, user, retry } = useAuth();
   const location = useLocation();
@@ -42,7 +42,7 @@ export function RequireRole({ role }: { role: Role }) {
     );
   }
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  if (user.role !== role) return <Navigate to={homePathFor(user.role)} replace />;
+  if (role && user.role !== role) return <Navigate to={homePathFor(user.role)} replace />;
   return <Outlet />;
 }
 

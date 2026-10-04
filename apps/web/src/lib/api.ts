@@ -12,6 +12,8 @@ import {
   scenarioDetailSchema,
   scenarioListResponseSchema,
   sessionResponseSchema,
+  progressResponseSchema,
+  progressTraineesResponseSchema,
   sessionListResponseSchema,
   terrainGridSchema,
   type AarDecisionDetail,
@@ -23,6 +25,8 @@ import {
   type JoinSessionResponse,
   type LobbyView,
   type PaceDefaults,
+  type ProgressResponse,
+  type ProgressTraineesResponse,
   type LoginBody,
   type PublicUser,
   type RegisterBody,
@@ -101,6 +105,12 @@ export const api = {
   },
   getScenarioGeo(id: string): Promise<ScenarioGeoResponse> {
     return request(`/scenarios/${encodeURIComponent(id)}/geo`, scenarioGeoResponseSchema);
+  },
+  getProgress(userId: string): Promise<ProgressResponse> {
+    return request(`/progress/${encodeURIComponent(userId)}`, progressResponseSchema);
+  },
+  getProgressTrainees(): Promise<ProgressTraineesResponse> {
+    return request('/progress/trainees', progressTraineesResponseSchema);
   },
   getScenarioTerrain(id: string): Promise<TerrainGridDto> {
     return request(`/scenarios/${encodeURIComponent(id)}/terrain`, terrainGridSchema);
