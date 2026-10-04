@@ -44,7 +44,7 @@ export class TruthLayer {
     seen.add(key);
   }
 
-  sync(truth: TruthViewDto, watched: PerceivedStateDto | null, t: TFunction): void {
+  sync(truth: Pick<TruthViewDto, 'units'>, watched: PerceivedStateDto | null, t: TFunction): void {
     const seen = new Set<string>();
     for (const u of truth.units) {
       const dead = u.status === 'DESTROYED' || u.status === 'OFFLINE';

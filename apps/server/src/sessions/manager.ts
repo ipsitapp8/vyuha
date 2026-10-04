@@ -66,7 +66,7 @@ export const room = {
   instructor: (id: string): string => `session:${id}:instructor`,
 };
 
-const startedPayloadSchema = z.object({
+export const startedPayloadSchema = z.object({
   scenario: scenarioDefinitionSchema,
   terrain: terrainGridSchema,
   weather: z.object({
@@ -462,18 +462,7 @@ export class SessionManager {
     const p = startedPayloadSchema.parse(started.payload);
     const initial = createTruthState(p.scenario, p.terrain, p.weather, p.seed, p.roster as Roster);
 
-    const inputsByTick = new Map<number, EngineInput[]>();
-    for (const e of logged) {
-      if (e.type !== 'INPUT') continue;
-      const li = loggedInputSchema.parse(e.payload);
-      const pending: Pending =
-        'instructor' in li
-          ? { kind: 'instructor', input: instructorInputSchema.parse(li.input) }
-          : { kind: 'player', playerId: li.playerId, action: actionFromLog(li.action) };
-      const list = inputsByTick.get(e.tick) ?? [];
-      list.push(pendingToEngine(pending));
-      inputsByTick.set(e.tick, list);
-    }
+    const inputsByTick = inputsFromLog(logged);
     const { state, events: replayed } = replay(initial, inputsByTick, session.currentTick);
     const rt = this.makeRuntime(session, state);
     rt.metrics.ingest(replayed);
@@ -673,6 +662,23 @@ function decisionRows(e: EngineEvent): DecisionRow[] {
 function gradeRows(e: EngineEvent): GradeRow[] {
   if (e.type !== 'REPORT_GRADED') return [];
   return [gradePayloadSchema.parse(e.payload)];
+}
+
+/** Rebuilds the engine inputs of a session from its logged INPUT events, grouped by the tick they were applied on. */
+export function inputsFromLog(logged: readonly EventRow[]): Map<number, EngineInput[]> {
+  const inputsByTick = new Map<number, EngineInput[]>();
+  for (const e of logged) {
+    if (e.type !== 'INPUT') continue;
+    const li = loggedInputSchema.parse(e.payload);
+    const pending: Pending =
+      'instructor' in li
+        ? { kind: 'instructor', input: instructorInputSchema.parse(li.input) }
+        : { kind: 'player', playerId: li.playerId, action: actionFromLog(li.action) };
+    const list = inputsByTick.get(e.tick) ?? [];
+    list.push(pendingToEngine(pending));
+    inputsByTick.set(e.tick, list);
+  }
+  return inputsByTick;
 }
 
 /** A logged action was validated when accepted; re-validate it on replay. */

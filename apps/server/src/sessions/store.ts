@@ -49,6 +49,8 @@ export interface DecisionRow {
   latencyMs: number;
 }
 
+export type StoredDecision = DecisionRow & { id: string };
+
 export interface GradeRow {
   playerId: string;
   reportId: string;
@@ -104,4 +106,7 @@ export interface SessionStore {
   /** Atomically persists one batch of ticks: events, decisions, report grades and the session tick. */
   commitBatch(batch: BatchCommit): Promise<void>;
   loadEvents(sessionId: string, types: string[]): Promise<EventRow[]>;
+  /** Every event of a session in the order it happened (for the after action review). */
+  loadAllEvents(sessionId: string): Promise<EventRow[]>;
+  listDecisions(sessionId: string): Promise<StoredDecision[]>;
 }

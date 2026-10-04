@@ -6,6 +6,7 @@ import {
   type PlayerRow,
   type SessionRow,
   type SessionStore,
+  type StoredDecision,
   type TeamRow,
 } from './store';
 
@@ -187,6 +188,36 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
         prisma.reportGrade.createMany({ data: b.grades }),
         prisma.session.update({ where: { id: b.sessionId }, data: { currentTick: b.currentTick } }),
       ]);
+    },
+    async loadAllEvents(sessionId) {
+      const rows = await prisma.sessionEvent.findMany({
+        where: { sessionId },
+        orderBy: { id: 'asc' },
+      });
+      return rows.map((r) => ({
+        tick: r.tick,
+        type: r.type,
+        payload: payloadSchema.parse(r.payload),
+        visibleTo: r.visibleTo,
+      }));
+    },
+    async listDecisions(sessionId): Promise<StoredDecision[]> {
+      const rows = await prisma.decision.findMany({
+        where: { sessionId },
+        orderBy: [{ tick: 'asc' }, { id: 'asc' }],
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        playerId: r.playerId,
+        tick: r.tick,
+        actionType: r.actionType,
+        payload: payloadSchema.parse(r.payload),
+        confidence: r.confidence,
+        rationale: r.rationale,
+        perceivedSnapshot: r.perceivedSnapshot,
+        truthSnapshot: r.truthSnapshot,
+        latencyMs: r.latencyMs,
+      }));
     },
     async loadEvents(sessionId, types) {
       const rows = await prisma.sessionEvent.findMany({

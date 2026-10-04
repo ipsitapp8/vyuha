@@ -19,7 +19,7 @@ import type { LobbyService } from './lobby';
 import type { SessionManager } from './manager';
 import type { SessionRow, SessionStore } from './store';
 
-function parse<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
+export function parse<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
   const result = schema.safeParse(body);
   if (!result.success) {
     const detail = result.error.issues
@@ -36,7 +36,7 @@ type Typed<P> = FastifyRequest<{ Params: P }>;
  * Wraps a handler so every failure becomes a typed error response (never an unhandled rejection).
  * Route params are typed per handler; Fastify validates the path shape itself.
  */
-function guarded<P>(
+export function guarded<P>(
   fn: (request: Typed<P>, reply: FastifyReply) => Promise<unknown>,
 ): (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> {
   return async (request, reply) => {

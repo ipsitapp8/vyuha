@@ -39,6 +39,7 @@ describe('locale files', () => {
       'channels.SATCOM',
       'cockpit.radio.pace',
       'god.timeline.at',
+      'aar.replay.marker',
     ]);
     const untranslated = Object.entries(flatHi).filter(
       ([k, v]) => !keep.has(k) && !/[ऀ-ॿ]/.test(v) && v === flatEn[k],

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import type {
   Ack,
   InstructorInput,
@@ -143,7 +144,11 @@ function live(over: Partial<SessionLive> = {}): SessionLive {
 
 const run = vi.fn(async (fn: () => Promise<LobbyView>) => void (await fn()));
 const renderGod = (l: SessionLive, status: 'RUNNING' | 'PAUSED' | 'ENDED' = 'RUNNING') =>
-  render(<GodView lobby={lobby} live={l} status={status} speed={1} busy={false} run={run} />);
+  render(
+    <MemoryRouter>
+      <GodView lobby={lobby} live={l} status={status} speed={1} busy={false} run={run} />
+    </MemoryRouter>,
+  );
 
 let errors: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
@@ -181,14 +186,16 @@ describe('GodView', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Watch: Bilal' }));
     expect(watch).toHaveBeenCalledWith('p2');
     rerender(
-      <GodView
-        lobby={lobby}
-        live={live({ perceived: view })}
-        status="RUNNING"
-        speed={1}
-        busy={false}
-        run={run}
-      />,
+      <MemoryRouter>
+        <GodView
+          lobby={lobby}
+          live={live({ perceived: view })}
+          status="RUNNING"
+          speed={1}
+          busy={false}
+          run={run}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByTestId('perceived-map')).toHaveAttribute('data-player', 'p2');
     expect(screen.getByTestId('truth-map')).toHaveAttribute('data-believed', '2');

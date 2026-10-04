@@ -62,3 +62,14 @@ docker compose up --build    # web :8080, server :4000, db :5432
 - Instructor inputs travel over the socket (`instructor:input`, `instructor:watch`), are validated with Zod, logged as session events and replayed exactly after a server restart.
 - `/instructor/scenarios/:id/msel`: form-based MSEL editor with JSON import/export. Imports are checked with the shared Zod schema and against the scenario (unknown units, wrong sides, positions outside the area). Sessions already started keep the MSEL they began with.
 - All instructor screens are available in English and Hindi.
+
+## After Action Review and exports (Phase 8)
+
+After an instructor ends a session, open **Open after action review** on the God View (or **Review** on the instructor home) to reach `/aar/:sessionId`. The review is rebuilt only from the `SessionEvent` and `Decision` tables by deterministic replay, so it works for any ended session.
+
+- **Ghost Replay**: timeline scrubber, truth map beside the chosen trainee's perceived map, clickable decision markers showing rationale, confidence and both snapshots.
+- **Charts**: picture drift over time, decision latency, confidence calibration, channel usage vs jamming.
+- **Team message flow** graph and rule-based **Key Learning Points** (offline, no AI).
+- **Exports** (instructor only): PDF report (`/aar/:id/export.pdf`), decisions CSV, full event log JSON.
+
+Test: `pnpm --filter @vyuha/server test` (AAR export and replay tests), `pnpm --filter @vyuha/engine test` (analysis rules), `pnpm --filter @vyuha/web test`.

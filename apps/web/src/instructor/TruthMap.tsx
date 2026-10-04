@@ -16,7 +16,7 @@ const OFFLINE_STYLE: StyleSpecification = {
 
 interface Props {
   bounds: AreaBounds;
-  truth: TruthViewDto;
+  truth: Pick<TruthViewDto, 'units'>;
   /** The trainee being watched; their believed contacts are drawn as dashed markers. */
   watched: PerceivedStateDto | null;
   onTilesOffline: () => void;

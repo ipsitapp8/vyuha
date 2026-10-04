@@ -1,5 +1,8 @@
 import type { z } from 'zod';
 import {
+  aarDecisionDetailSchema,
+  aarSnapshotSchema,
+  aarSummarySchema,
   apiErrorSchema,
   authResponseSchema,
   ingestJobSchema,
@@ -10,6 +13,9 @@ import {
   scenarioListResponseSchema,
   sessionResponseSchema,
   sessionListResponseSchema,
+  type AarDecisionDetail,
+  type AarSnapshot,
+  type AarSummary,
   type AssignPlayerBody,
   type IngestJob,
   type Inject,
@@ -160,5 +166,28 @@ export const api = {
       method: 'PUT',
       body: { msel },
     });
+  },
+
+  // ---- after action review ----
+  getAar(sessionId: string): Promise<AarSummary> {
+    return request(`/aar/${encodeURIComponent(sessionId)}`, aarSummarySchema);
+  },
+  getAarSnapshot(sessionId: string, tick: number, playerId: string | null): Promise<AarSnapshot> {
+    const q = new URLSearchParams({ tick: String(Math.max(0, Math.floor(tick))) });
+    if (playerId) q.set('playerId', playerId);
+    return request(
+      `/aar/${encodeURIComponent(sessionId)}/snapshot?${q.toString()}`,
+      aarSnapshotSchema,
+    );
+  },
+  getAarDecision(sessionId: string, decisionId: string): Promise<AarDecisionDetail> {
+    return request(
+      `/aar/${encodeURIComponent(sessionId)}/decisions/${encodeURIComponent(decisionId)}`,
+      aarDecisionDetailSchema,
+    );
+  },
+  /** Plain download link: the auth cookie goes with the navigation, the server answers with an attachment. */
+  aarExportUrl(sessionId: string, kind: 'pdf' | 'csv' | 'json'): string {
+    return `${API_URL}/aar/${encodeURIComponent(sessionId)}/export.${kind}`;
   },
 };

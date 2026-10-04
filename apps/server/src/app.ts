@@ -4,6 +4,8 @@ import cookie from '@fastify/cookie';
 import { Server as SocketServer } from 'socket.io';
 import type { HealthResponse, ScenarioListResponse } from '@vyuha/shared';
 import type { Config } from './config';
+import { registerAarRoutes } from './aar/routes';
+import { AarService } from './aar/service';
 import { registerAuth } from './auth';
 import { registerScenarioRoutes } from './scenarioRoutes';
 import { sendError } from './errors';
@@ -81,6 +83,7 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
     options.scheduler,
   );
   registerSessionRoutes(fastify, guards, deps.sessions, lobby, manager);
+  registerAarRoutes(fastify, guards, new AarService(deps.sessions));
   attachSocketHandlers(
     io,
     config,

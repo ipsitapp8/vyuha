@@ -8,6 +8,7 @@ import {
   type PlayerRow,
   type SessionRow,
   type SessionStore,
+  type StoredDecision,
   type TeamRow,
 } from './store';
 
@@ -17,7 +18,7 @@ export function createMemorySessionStore(
   titles: (scenarioId: string) => string = (id) => id,
 ): SessionStore & {
   events: Map<string, EventRow[]>;
-  decisions: DecisionRow[];
+  decisions: (StoredDecision & { sessionId: string })[];
   grades: GradeRow[];
   failNextCommit(): void;
 } {
@@ -25,7 +26,7 @@ export function createMemorySessionStore(
   const teams = new Map<string, TeamRow>();
   const players = new Map<string, PlayerRow>();
   const events = new Map<string, EventRow[]>();
-  const decisions: DecisionRow[] = [];
+  const decisions: (StoredDecision & { sessionId: string })[] = [];
   const grades: GradeRow[] = [];
   let failCommit = false;
 
@@ -147,10 +148,22 @@ export function createMemorySessionStore(
       const list = events.get(b.sessionId) ?? [];
       list.push(...b.events);
       events.set(b.sessionId, list);
-      decisions.push(...b.decisions);
+      decisions.push(
+        ...b.decisions.map((d: DecisionRow) => ({
+          ...d,
+          id: randomUUID(),
+          sessionId: b.sessionId,
+        })),
+      );
       grades.push(...b.grades);
       const s = sessions.get(b.sessionId);
       if (s) sessions.set(b.sessionId, { ...s, currentTick: b.currentTick });
+    },
+    async loadAllEvents(sessionId) {
+      return [...(events.get(sessionId) ?? [])];
+    },
+    async listDecisions(sessionId) {
+      return decisions.filter((d) => d.sessionId === sessionId);
     },
     async loadEvents(sessionId, types) {
       return (events.get(sessionId) ?? []).filter((e) => types.includes(e.type));

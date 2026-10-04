@@ -10,6 +10,7 @@ import {
   type TruthEventDto,
 } from '@vyuha/shared';
 import { CockpitMap } from '@/cockpit/CockpitMap';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { clock } from '@/lib/format';
@@ -261,7 +262,12 @@ function RunControls({ lobby, status, speed, busy, run }: Omit<Props, 'live'>) {
           </Button>
         </>
       ) : (
-        <p>{t('god.controls.ended')}</p>
+        <>
+          <p>{t('god.controls.ended')}</p>
+          <Button asChild>
+            <Link to={`/aar/${sid}`}>{t('aar.openReview')}</Link>
+          </Button>
+        </>
       )}
     </section>
   );

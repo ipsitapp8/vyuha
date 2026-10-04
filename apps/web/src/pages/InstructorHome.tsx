@@ -145,9 +145,16 @@ export function InstructorHome() {
                     })}
                   </span>
                 </span>
-                <Link className="text-primary underline" to={`/instructor/sessions/${s.id}`}>
-                  {t('instructor.home.open')}
-                </Link>
+                <span className="flex gap-4">
+                  <Link className="text-primary underline" to={`/instructor/sessions/${s.id}`}>
+                    {t('instructor.home.open')}
+                  </Link>
+                  {s.status === 'ENDED' ? (
+                    <Link className="text-primary underline" to={`/aar/${s.id}`}>
+                      {t('aar.review')}
+                    </Link>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>
