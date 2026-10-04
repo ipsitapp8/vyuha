@@ -8,7 +8,7 @@ import {
   type PerceivedStateDto,
 } from '@vyuha/shared';
 import { csvCell, decisionsCsv } from './exports';
-import { describeProgress, displayName } from './pdf';
+import { challengedText, describeProgress, displayName } from './pdf';
 import { closeEnv, makeEnv, setupLobby, type Env } from '../sessions/testenv';
 
 let env: Env | undefined;
@@ -287,6 +287,8 @@ describe('Exports', () => {
       'Key learning points',
       'Team timeline',
       'Message flow',
+      'Challenged',
+      'Spoofs challenged',
     ]) {
       expect(text).toContain(needle);
     }
@@ -382,6 +384,19 @@ describe('progress section of the PDF', () => {
     const none = describeProgress([session(null, null, 1), session(null, null, 2)]);
     expect(none.delay).toContain('not measurable');
     expect(none.brier).toContain('not enough');
+  });
+
+  it('writes the spoofs-challenged figure as a share with the counts', () => {
+    expect(
+      challengedText({
+        spoofsReceived: 3,
+        spoofsChallenged: 2,
+        spoofsChallengedPct: (2 / 3) * 100,
+      }),
+    ).toBe('67% (2 of 3)');
+    expect(
+      challengedText({ spoofsReceived: 0, spoofsChallenged: 0, spoofsChallengedPct: null }),
+    ).toBe('–');
   });
 
   it('marks demo bots in the report', () => {

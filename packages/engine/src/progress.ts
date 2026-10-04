@@ -1,4 +1,4 @@
-import { computeMetrics } from './metrics';
+import { computeMetrics, spoofChallenge } from './metrics';
 import { jamAt, jamSteps } from './aar';
 import type { DecisionRecord, EngineEvent } from './types';
 
@@ -59,24 +59,13 @@ export function computeProgressMetrics(
       return Math.max(...Object.values(jam)) >= JAMMING_THRESHOLD ? [d.latencyTicks] : [];
     });
 
-    const received = new Set<string>();
-    const challenged = new Set<string>();
-    for (const e of events) {
-      if (e.payload['playerId'] !== playerId) continue;
-      const messageId = e.payload['messageId'];
-      if (typeof messageId !== 'string') continue;
-      if (e.type === 'SPOOF_INJECTED') received.add(messageId);
-      if (e.type === 'AUTH_STARTED') challenged.add(messageId);
-    }
-    const challengedSpoofs = [...received].filter((id) => challenged.has(id)).length;
-
     const latency = m?.avgLatencyTicks ?? null;
     const jammedLatency = mean(jammed);
     out[playerId] = {
       avgDecisionLatencyMs: latency === null ? null : latency * TICK_MS,
       latencyUnderJammingMs: jammedLatency === null ? null : jammedLatency * TICK_MS,
       brierScore: m?.brierScore ?? null,
-      spoofsChallengedPct: received.size === 0 ? null : (challengedSpoofs / received.size) * 100,
+      spoofsChallengedPct: spoofChallenge(events, playerId).pct,
       reportGradingAccuracy: m?.gradingAccuracy ?? null,
     };
   }

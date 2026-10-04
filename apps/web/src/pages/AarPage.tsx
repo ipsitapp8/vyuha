@@ -121,6 +121,7 @@ function Review({ summary }: { summary: AarSummary }) {
                 <th className="p-1 text-right">{t('aar.summary.latency')}</th>
                 <th className="p-1 text-right">{t('aar.summary.grading')}</th>
                 <th className="p-1 text-right">{t('aar.summary.spoofs')}</th>
+                <th className="p-1 text-right">{t('aar.summary.challenged')}</th>
                 <th className="p-1 text-right">{t('aar.summary.drift')}</th>
               </tr>
             </thead>
@@ -152,6 +153,11 @@ function Review({ summary }: { summary: AarSummary }) {
                     className={`p-1 text-right ${p.spoofActedCount > 0 ? 'font-semibold text-red-400' : ''}`}
                   >
                     {p.spoofActedCount}
+                  </td>
+                  <td className="p-1 text-right">
+                    {p.spoofsChallengedPct === null
+                      ? '–'
+                      : `${pct(p.spoofsChallengedPct)} (${p.spoofsChallenged}/${p.spoofsReceived})`}
                   </td>
                   <td className="p-1 text-right">
                     {p.drift ? Math.round(p.drift.meanPositionErrorM) : '–'}

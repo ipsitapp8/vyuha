@@ -124,6 +124,17 @@ export type ProgressByPlayer = Record<string, ProgressSession[]>;
 export const displayName = (p: { name: string; isDemoBot: boolean }): string =>
   p.isDemoBot ? `${p.name} (Demo bot)` : p.name;
 
+/** "100% (1 of 1)" or a dash when no spoofed order reached the trainee. */
+export function challengedText(p: {
+  spoofsReceived: number;
+  spoofsChallenged: number;
+  spoofsChallengedPct: number | null;
+}): string {
+  return p.spoofsChallengedPct === null
+    ? '–'
+    : `${Math.round(p.spoofsChallengedPct)}% (${p.spoofsChallenged} of ${p.spoofsReceived})`;
+}
+
 const seconds = (ms: number | null): string => (ms === null ? '–' : `${(ms / 1000).toFixed(0)} s`);
 
 /** The rows and the two trend sentences of the "Progress so far" section. */
@@ -409,16 +420,17 @@ function AarDocument({ summary, progress }: { summary: AarSummary; progress: Pro
         <Text style={s.h1}>Summary</Text>
         <Table
           cols={[
-            { label: 'Trainee', w: 17 },
-            { label: 'Role', w: 15 },
-            { label: 'Dec.', w: 7, align: 'right' },
-            { label: 'Correct', w: 9, align: 'right' },
-            { label: 'Avg conf.', w: 10, align: 'right' },
-            { label: 'Brier', w: 7, align: 'right' },
-            { label: 'Latency', w: 9, align: 'right' },
-            { label: 'Grading', w: 9, align: 'right' },
-            { label: 'Spoofs', w: 8, align: 'right' },
-            { label: 'Drift m', w: 9, align: 'right' },
+            { label: 'Trainee', w: 15 },
+            { label: 'Role', w: 13 },
+            { label: 'Dec.', w: 6, align: 'right' },
+            { label: 'Correct', w: 8, align: 'right' },
+            { label: 'Avg conf.', w: 9, align: 'right' },
+            { label: 'Brier', w: 6, align: 'right' },
+            { label: 'Latency', w: 8, align: 'right' },
+            { label: 'Grading', w: 8, align: 'right' },
+            { label: 'Spoofs acted', w: 8, align: 'right' },
+            { label: 'Challenged', w: 11, align: 'right' },
+            { label: 'Drift m', w: 8, align: 'right' },
           ]}
           rows={analysis.players.map((p) => [
             p.name,
@@ -430,14 +442,16 @@ function AarDocument({ summary, progress }: { summary: AarSummary; progress: Pro
             fmt(p.avgLatencyTicks, 0, ' s'),
             p.gradingAccuracy === null ? '–' : `${Math.round(p.gradingAccuracy * 100)}%`,
             String(p.spoofActedCount),
+            challengedText(p),
             fmt(p.drift?.meanPositionErrorM ?? null, 0),
           ])}
         />
         <Text style={[s.muted, { fontSize: 7, marginTop: 3 }]}>
           Dec. = decisions · Correct = share of scored decisions that were right · Brier =
           calibration score (lower is better) · Latency = seconds from the relevant information
-          arriving to the decision · Grading = Admiralty grading accuracy · Spoofs = spoofed orders
-          acted on · Drift = average position error of the picture.
+          arriving to the decision · Grading = Admiralty grading accuracy · Spoofs acted = spoofed
+          orders acted on · Challenged = spoofed orders received that the trainee challenged with
+          Authenticate (received in brackets) · Drift = average position error of the picture.
         </Text>
         <Text style={s.h2}>Key learning points</Text>
         <LearningList points={analysis.learning} nameOf={nameOf} />
@@ -511,6 +525,7 @@ function AarDocument({ summary, progress }: { summary: AarSummary; progress: Pro
                 ],
                 ['Channel switches', String(sum?.channelSwitchCount ?? 0)],
                 ['Spoofs acted on', String(sum?.spoofActedCount ?? 0)],
+                ['Spoofs challenged', sum ? challengedText(sum) : '–'],
                 ['Avg position error', fmt(sum?.drift?.meanPositionErrorM ?? null, 0, ' m')],
                 ['Avg missed hostiles', fmt(sum?.drift?.meanMissed ?? null, 1)],
                 ['Avg ghost contacts', fmt(sum?.drift?.meanGhost ?? null, 1)],

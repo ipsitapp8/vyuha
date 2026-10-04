@@ -405,6 +405,10 @@ describe('AarPage', () => {
       expect(link).toHaveAttribute('download');
     const table = within(screen.getByRole('region', { name: 'Trainee summary' }));
     expect(table.getByText('Bilal').closest('tr')).toHaveTextContent('95%');
+    // spoofs challenged: Bilal received one fake order and challenged it; Asha was never sent one
+    expect(table.getByRole('columnheader', { name: 'Challenged' })).toBeInTheDocument();
+    expect(table.getByText('Bilal').closest('tr')).toHaveTextContent('100% (1/1)');
+    expect(table.getByText('Asha').closest('tr')).not.toHaveTextContent('(0/0)');
     for (const name of [
       'Key learning points',
       'Ghost replay',

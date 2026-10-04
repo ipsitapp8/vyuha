@@ -115,6 +115,34 @@ export function decisionsFromEvents(events: readonly EngineEvent[]): DecisionRec
     });
 }
 
+export interface SpoofChallenge {
+  /** Spoofed orders delivered to the player. */
+  received: number;
+  /** Of those, how many the player challenged with Authenticate. */
+  challenged: number;
+  /** challenged / received as 0..100; null when no spoof reached the player. */
+  pct: number | null;
+}
+
+/** How many of the spoofed orders a player received were challenged with Authenticate. */
+export function spoofChallenge(events: readonly EngineEvent[], playerId: string): SpoofChallenge {
+  const received = new Set<string>();
+  const challenged = new Set<string>();
+  for (const e of events) {
+    if (e.payload['playerId'] !== playerId) continue;
+    const messageId = e.payload['messageId'];
+    if (typeof messageId !== 'string') continue;
+    if (e.type === 'SPOOF_INJECTED') received.add(messageId);
+    if (e.type === 'AUTH_STARTED') challenged.add(messageId);
+  }
+  const hit = [...received].filter((id) => challenged.has(id)).length;
+  return {
+    received: received.size,
+    challenged: hit,
+    pct: received.size === 0 ? null : (hit / received.size) * 100,
+  };
+}
+
 /** Per-player exercise metrics from the event log and the recorded decisions. */
 export function computeMetrics(
   events: readonly EngineEvent[],

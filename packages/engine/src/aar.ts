@@ -1,6 +1,6 @@
 import type { Channel } from '@vyuha/shared';
 import { CHANNELS } from './config';
-import { computeMetrics, type PlayerMetrics } from './metrics';
+import { computeMetrics, spoofChallenge, type PlayerMetrics } from './metrics';
 import type { EngineEvent } from './types';
 
 /**
@@ -555,6 +555,10 @@ export interface PlayerSummary extends PlayerMetrics {
   name: string;
   role: string;
   teamId: string;
+  /** Spoofed orders delivered to this player, how many they challenged with Authenticate, and the share (0..100). */
+  spoofsReceived: number;
+  spoofsChallenged: number;
+  spoofsChallengedPct: number | null;
   meanConfidence: number | null;
   /** Percent of scored decisions that were correct. */
   accuracy: number | null;
@@ -587,8 +591,12 @@ export function analyzeExercise(input: AarInput): AarAnalysis {
       drift: null,
     };
     const scored = input.decisions.filter((d) => d.playerId === p.id && d.outcome !== null);
+    const spoof = spoofChallenge(input.events, p.id);
     return {
       ...base,
+      spoofsReceived: spoof.received,
+      spoofsChallenged: spoof.challenged,
+      spoofsChallengedPct: spoof.pct,
       name: p.name,
       role: p.role,
       teamId: p.teamId,

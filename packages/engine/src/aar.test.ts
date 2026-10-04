@@ -10,6 +10,7 @@ import {
   type AarDecision,
   type AarInput,
 } from './aar';
+import { spoofChallenge } from './metrics';
 import type { EngineEvent } from './types';
 
 const ev = (tick: number, type: string, payload: Record<string, unknown>): EngineEvent => ({
@@ -364,6 +365,59 @@ describe('learning points: communications', () => {
       ),
     );
     expect(sev[0]).toBe('warn');
+  });
+});
+
+describe('spoofs challenged', () => {
+  const spoof = (playerId: string, messageId: string) =>
+    ev(50, 'SPOOF_INJECTED', { playerId, messageId, text: 'x' });
+  const auth = (playerId: string, messageId: string) =>
+    ev(60, 'AUTH_STARTED', { playerId, messageId });
+
+  it('counts, per trainee, the spoofed orders received and how many were challenged', () => {
+    const events = [
+      spoof('p1', 'a'),
+      spoof('p1', 'b'),
+      spoof('p1', 'c'),
+      auth('p1', 'a'),
+      auth('p1', 'c'),
+      auth('p1', 'a'), // asking twice about the same order is one challenge
+      spoof('p2', 'd'),
+      auth('p2', 'unrelated'), // authenticating something that was not a spoof does not count
+    ];
+    expect(spoofChallenge(events, 'p1')).toEqual({
+      received: 3,
+      challenged: 2,
+      pct: (2 / 3) * 100,
+    });
+    expect(spoofChallenge(events, 'p2')).toEqual({ received: 1, challenged: 0, pct: 0 });
+    expect(spoofChallenge(events, 'p3')).toEqual({ received: 0, challenged: 0, pct: null });
+  });
+
+  it('appears in each trainee summary of the analysis', () => {
+    const events = [spoof('p1', 'a'), auth('p1', 'a'), spoof('p2', 'b')];
+    const a = analyzeExercise(input({ events, durationTicks: 100 }));
+    expect(a.players.find((p) => p.playerId === 'p1')).toMatchObject({
+      spoofsReceived: 1,
+      spoofsChallenged: 1,
+      spoofsChallengedPct: 100,
+    });
+    expect(a.players.find((p) => p.playerId === 'p2')).toMatchObject({
+      spoofsReceived: 1,
+      spoofsChallenged: 0,
+      spoofsChallengedPct: 0,
+    });
+  });
+
+  it('is null for a trainee no spoofed order reached', () => {
+    const a = analyzeExercise(input({ events: [], durationTicks: 100 }));
+    for (const p of a.players) {
+      expect(p).toMatchObject({
+        spoofsReceived: 0,
+        spoofsChallenged: 0,
+        spoofsChallengedPct: null,
+      });
+    }
   });
 });
 

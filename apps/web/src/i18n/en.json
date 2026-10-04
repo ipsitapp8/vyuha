@@ -574,8 +574,9 @@
       "latency": "Latency",
       "grading": "Grading",
       "spoofs": "Spoofs acted on",
+      "challenged": "Challenged",
       "drift": "Drift (m)",
-      "help": "Correct = share of scored decisions that were right. Brier = calibration score, lower is better. Latency = seconds from the relevant information arriving to the decision. Grading = Admiralty grading accuracy against the hidden truth. Drift = average position error of their picture."
+      "help": "Correct = share of scored decisions that were right. Brier = calibration score, lower is better. Latency = seconds from the relevant information arriving to the decision. Grading = Admiralty grading accuracy against the hidden truth. Challenged = spoofed orders received that they challenged with Authenticate, with the count in brackets. Drift = average position error of their picture."
     },
     "learning": {
       "title": "Key learning points",

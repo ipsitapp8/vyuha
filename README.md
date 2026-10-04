@@ -72,6 +72,7 @@ After an instructor ends a session, open **Open after action review** on the God
 
 - **Ghost Replay**: timeline scrubber, truth map beside the chosen trainee's perceived map, clickable decision markers showing rationale, confidence and both snapshots.
 - **Charts**: picture drift over time, decision latency, confidence calibration, channel usage vs jamming.
+- **Trainee summary** (screen and PDF) with decisions, Brier, latency, grading and **spoofs challenged**: how many of the fake orders a trainee received they challenged with Authenticate, as a share with the counts (for example 100% (1 of 1)); a dash when none reached them.
 - **Team message flow** graph and rule-based **Key Learning Points** (offline, no AI).
 - **Exports** (instructor only): PDF report (`/aar/:id/export.pdf`), decisions CSV, full event log JSON.
 

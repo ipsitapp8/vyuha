@@ -41,6 +41,10 @@ const playerSummarySchema = z.object({
   gradingAccuracy: z.number().nullable(),
   channelSwitchCount: z.number().int(),
   spoofActedCount: z.number().int(),
+  spoofsReceived: z.number().int(),
+  spoofsChallenged: z.number().int(),
+  /** 0..100, null when no spoofed order reached the trainee. */
+  spoofsChallengedPct: z.number().nullable(),
   meanConfidence: z.number().nullable(),
   accuracy: z.number().nullable(),
   drift: z
