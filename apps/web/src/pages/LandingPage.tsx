@@ -10,27 +10,27 @@ export function LandingPage() {
     <>
       <AppHeader />
       <main>
-        <section className="relative overflow-hidden border-b border-border bg-secondary">
-          {/* Decorative army scene on the right; it fades out under the text so the heading stays readable. */}
+        <section className="relative flex min-h-[22rem] items-center overflow-hidden border-b border-border bg-secondary sm:min-h-[26rem]">
+          {/* Army photo behind the hero; a dark fade on the left keeps the white heading and text readable. */}
           <div
             aria-hidden="true"
             className="vy-hero-art pointer-events-none absolute inset-0"
             style={{
-              backgroundImage: `url(${import.meta.env.BASE_URL}hero-army.svg)`,
-              backgroundSize: 'auto 100%',
-              backgroundPosition: 'right bottom',
+              backgroundImage: `url(${import.meta.env.BASE_URL}hero-army.jpg)`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'right 25%',
               backgroundRepeat: 'no-repeat',
             }}
           />
           <div
             aria-hidden="true"
-            className="vy-hero-art pointer-events-none absolute inset-0 bg-gradient-to-r from-secondary via-secondary/85 to-transparent"
+            className="vy-hero-art pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b1a2b]/95 via-[#0b1a2b]/70 to-transparent"
           />
-          <div className="relative mx-auto max-w-7xl px-4 py-12">
-            <h1 className="max-w-3xl text-3xl font-bold text-primary sm:text-4xl">
+          <div className="relative mx-auto w-full max-w-7xl px-4 py-12">
+            <h1 className="max-w-3xl text-3xl font-bold text-white sm:text-4xl">
               {t('landing.heroTitle')}
             </h1>
-            <p className="mt-4 max-w-3xl text-lg">{t('landing.heroBody')}</p>
+            <p className="mt-4 max-w-3xl text-lg text-white">{t('landing.heroBody')}</p>
           </div>
         </section>
 
