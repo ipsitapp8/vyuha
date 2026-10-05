@@ -2,3 +2,5 @@ node_modules
 dist
 pnpm-lock.yaml
 *.md
+apps/web/public/map-assets
+

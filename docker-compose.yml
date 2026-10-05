@@ -28,7 +28,8 @@ services:
       NODE_ENV: production
       PORT: '4000'
       DATABASE_URL: postgresql://${POSTGRES_USER:-vyuha}:${POSTGRES_PASSWORD:-vyuha_dev_password}@db:5432/${POSTGRES_DB:-vyuha}
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string-of-32-chars-or-more}
+      # No default: the stack refuses to start until JWT_SECRET is set in .env (openssl rand -hex 32).
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env to 32 or more random characters, for example with openssl rand -hex 32}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Creates the demo accounts and Op Silent Ridge on start so a fresh stack is usable offline.

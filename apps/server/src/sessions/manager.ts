@@ -329,6 +329,7 @@ export class SessionManager {
     }
     const rt = await this.requireRuntime(sessionId);
     return this.exclusive(rt, async () => {
+      const wasRunning = rt.status === 'RUNNING';
       this.stopLoop(rt);
       rt.status = 'ENDED';
       const row = await this.store.updateSession(sessionId, {
@@ -550,11 +551,16 @@ export class SessionManager {
   /** Runs `speed` ticks, persists them atomically, then fans the results out. */
   private async tickBatch(rt: Runtime): Promise<void> {
     if (rt.status !== 'RUNNING') return;
+    await this.runTicks(rt, rt.speed);
+  }
+
+  /** Steps the engine `ticks` times with the queued inputs. False when nothing could be persisted. */
+  private async runTicks(rt: Runtime, ticks: number): Promise<boolean> {
     const before = rt.state;
     const inputs = rt.pending.splice(0);
     const events: EngineEvent[] = [];
     let state = before;
-    for (let i = 0; i < rt.speed; i++) {
+    for (let i = 0; i < ticks; i++) {
       const tickInputs = i === 0 ? inputs : [];
       for (const inp of tickInputs) {
         events.push({
@@ -583,11 +589,12 @@ export class SessionManager {
       rt.state = before;
       rt.rng = mulberry32(before.rngState);
       rt.pending.unshift(...inputs);
-      return;
+      return false;
     }
     rt.state = state;
     rt.metrics.ingest(events);
     this.emitBatch(rt, events);
+    return true;
   }
 
   private async logLifecycle(rt: Runtime, type: string): Promise<void> {

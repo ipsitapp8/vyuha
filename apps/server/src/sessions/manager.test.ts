@@ -128,6 +128,63 @@ describe('SessionManager: running an exercise', () => {
   });
 });
 
+describe('SessionManager: ending an exercise', () => {
+  const decision: PlayerAction = {
+    type: 'DECISION',
+    actionType: 'HOLD',
+    confidence: 70,
+    rationale: 'Holding until the picture is clearer.',
+  };
+
+  it('applies actions still queued when the instructor ends, so an acknowledged decision reaches the AAR', async () => {
+    const { env: e, sessionId, players, manager } = await started(4);
+    await manager.stepNow(sessionId, 2);
+    await manager.enqueue(sessionId, players.sec, decision);
+    await manager.end(sessionId);
+
+    const log = events(e, sessionId);
+    const types = log.map((x) => x.type);
+    expect(types.at(-1)).toBe('SESSION_ENDED');
+    expect(types.indexOf('DECISION_MADE')).toBeGreaterThan(-1);
+    expect(types.indexOf('DECISION_MADE')).toBeLessThan(types.indexOf('SESSION_ENDED'));
+    // one final tick, not a whole 4x batch
+    expect((await e.mem.deps.sessions.getSession(sessionId))?.currentTick).toBe(9);
+
+    const aar = await e.api('GET', `/aar/${sessionId}`, 'inst@x.io');
+    expect(aar.status).toBe(200);
+    const body = aar.body as { decisions: { playerId: string; actionType: string }[] };
+    expect(body.decisions).toEqual([
+      expect.objectContaining({ playerId: players.sec, actionType: 'HOLD' }),
+    ]);
+  });
+
+  it('also applies what was queued before a pause, and adds no tick when nothing is queued', async () => {
+    const { env: e, sessionId, players, manager } = await started();
+    await manager.stepNow(sessionId, 3);
+    await manager.enqueue(sessionId, players.pl, decision);
+    await manager.pause(sessionId);
+    await manager.end(sessionId);
+    expect(events(e, sessionId).filter((x) => x.type === 'DECISION_MADE')).toHaveLength(1);
+
+    const other = await started();
+    await other.manager.stepNow(other.sessionId, 3);
+    await other.manager.end(other.sessionId);
+    expect((await other.env.mem.deps.sessions.getSession(other.sessionId))?.currentTick).toBe(3);
+  });
+
+  it('does not end the exercise when the last actions cannot be stored', async () => {
+    const { env: e, sessionId, players, manager } = await started();
+    await manager.stepNow(sessionId, 3);
+    await manager.enqueue(sessionId, players.pl, decision);
+    e.mem.sessions.failNextCommit();
+    await expect(manager.end(sessionId)).rejects.toBeInstanceOf(HttpError);
+    expect((await e.mem.deps.sessions.getSession(sessionId))?.status).toBe('RUNNING');
+    await manager.end(sessionId);
+    expect(events(e, sessionId).filter((x) => x.type === 'DECISION_MADE')).toHaveLength(1);
+    expect((await e.mem.deps.sessions.getSession(sessionId))?.status).toBe('ENDED');
+  });
+});
+
 describe('SessionManager: recovery from the event log', () => {
   it('a fresh manager rebuilds the exact state by replay and then stays in lock-step', async () => {
     const { env: e, sessionId, players, manager } = await started();

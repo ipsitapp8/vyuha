@@ -48,6 +48,10 @@ export interface AarInput {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+const clockOf = (tick: number): string => {
+  const t = Math.max(0, Math.floor(tick));
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+};
 const isChannel = (v: unknown): v is Channel => CHANNELS.some((c) => c === v);
 const mean = (xs: readonly number[]): number =>
   xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
@@ -415,7 +419,16 @@ export function learningPoints(input: AarInput): LearningPoint[] {
 
     const spoofActed = m?.spoofActedCount ?? 0;
     const received = spoofsReceived.get(p.id) ?? 0;
-    if (spoofActed > 0) add('ACTED_ON_SPOOF', 'warn', { count: spoofActed });
+    // Acting on an order that authentication had already shown to be fake is its own, worse, mistake.
+    const knownFake = input.events.filter(
+      (e) =>
+        e.type === 'SPOOF_ACTED' &&
+        e.payload['playerId'] === p.id &&
+        e.payload['authState'] === 'FAILED',
+    ).length;
+    if (spoofActed - knownFake > 0)
+      add('ACTED_ON_SPOOF', 'warn', { count: spoofActed - knownFake });
+    if (knownFake > 0) add('ACTED_ON_FAILED_AUTH', 'warn', { count: knownFake });
     if (received > 0 && (authStarted.get(p.id) ?? 0) === 0)
       add('NEVER_AUTHENTICATED', 'warn', { received });
     if (received > 0 && spoofActed === 0 && (authStarted.get(p.id) ?? 0) > 0) {

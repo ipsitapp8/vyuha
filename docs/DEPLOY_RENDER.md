@@ -92,7 +92,7 @@ CORS_ORIGIN="http://localhost" pnpm demo:history
 docker build -t vyuha .
 docker run --rm -p 10000:10000 -e PORT=10000 -e COOKIE_SECURE=false \
   -e DATABASE_URL="postgresql://vyuha:vyuha_dev_password@host.docker.internal:5432/vyuha" \
-  -e JWT_SECRET="change-me-to-a-long-random-string-of-32-chars-or-more" \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
   -e RENDER_EXTERNAL_URL="http://localhost:10000" -e SEED_ON_START=true vyuha
 ```
 

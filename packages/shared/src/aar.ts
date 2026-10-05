@@ -215,6 +215,8 @@ export const LEARNING_TEXT_EN: Record<string, string> = {
   ACTED_ON_GHOST: 'Engaged or reported a ghost contact (no real unit behind it) {{count}} time(s).',
   ACTED_ON_SPOOF:
     'Acted on an order that had not been authenticated and was spoofed, {{count}} time(s).',
+  ACTED_ON_FAILED_AUTH:
+    'Acted on an order after authentication had shown it to be fake, {{count}} time(s).',
   NEVER_AUTHENTICATED: 'Received {{received}} spoofed order(s) and never used Authenticate.',
   SPOOF_HANDLED_WELL: 'Received {{received}} spoofed order(s) and authenticated before acting.',
   OVERCONFIDENT:

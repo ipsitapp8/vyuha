@@ -243,6 +243,20 @@ describe('learning points: individual judgement', () => {
     expect(rules(input({ events, decisions }), 'p2')).not.toContain('NEVER_AUTHENTICATED');
   });
 
+  it('acting on an order whose authentication failed is flagged, never praised', () => {
+    const events = [
+      ev(50, 'SPOOF_INJECTED', { playerId: 'p1', text: 'x' }),
+      ev(60, 'AUTH_STARTED', { playerId: 'p1', messageId: 'm' }),
+      ev(75, 'AUTH_RESOLVED', { playerId: 'p1', messageId: 'm', result: 'FAILED' }),
+      ev(90, 'SPOOF_ACTED', { playerId: 'p1', messageId: 'm', authState: 'FAILED' }),
+    ];
+    const decisions = [decision({ playerId: 'p1', outcome: 0, tick: 90 })];
+    const got = rules(input({ events, decisions }), 'p1');
+    expect(got).toContain('ACTED_ON_FAILED_AUTH');
+    expect(got).not.toContain('SPOOF_HANDLED_WELL');
+    expect(got).not.toContain('ACTED_ON_SPOOF');
+  });
+
   it('judges confidence calibration only with at least three scored decisions', () => {
     const mk = (conf: number, outcomes: (0 | 1)[]) =>
       outcomes.map((o) => decision({ confidence: conf, outcome: o }));

@@ -2,6 +2,7 @@ import {
   ADAPT_INTERVAL_TICKS,
   AUTH_DELAY_TICKS,
   BANDWIDTH_PER_TICK,
+  BASE_LATENCY_TICKS,
   BEACON_INTERVAL_TICKS,
   DRIFT_SAMPLE_INTERVAL_TICKS,
   ISR_TASK_TICKS,
@@ -253,7 +254,7 @@ function transmit(ctx: Ctx, out: Outgoing): void {
       ? SWITCH_EXTRA_DELAY_TICKS
       : 0;
 
-  const result = deliverMessage(
+  const drawn = deliverMessage(
     rng,
     {
       channel: out.channel,
@@ -894,8 +895,9 @@ function applyDecision(
     outcome = real && haversineM(contact.position, subject.position) <= 500 ? 1 : 0;
   }
 
-  const spoofActed =
-    !!order && order.spoof && order.authState !== 'FAILED' && ACTING_ACTIONS.has(input.actionType);
+  // Acting on a forged order counts whether it was never challenged or the challenge already showed it
+  // to be fake; the event's authState tells the two apart in the review.
+  const spoofActed = !!order && order.spoof && ACTING_ACTIONS.has(input.actionType);
   const perceived = computePerceivedState(s, player.id);
 
   emit(

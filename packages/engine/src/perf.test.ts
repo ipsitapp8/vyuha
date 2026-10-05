@@ -10,7 +10,12 @@ import { jam } from './testrun';
 const TEAMS = 4;
 const PLAYERS_PER_TEAM = 4;
 const ROLES = ['PL_CDR', 'SECTION_CDR', 'EW_OFFICER', 'ISR_OPERATOR'] as const;
-const pace = { primary: 'VHF', alternate: 'HF', contingency: 'SATCOM', emergency: 'RUNNER' } as const;
+const pace = {
+  primary: 'VHF',
+  alternate: 'HF',
+  contingency: 'SATCOM',
+  emergency: 'RUNNER',
+} as const;
 
 /** 4 teams of 4 players, each with an own unit, against a red force, on ridged terrain. */
 function bigExercise() {

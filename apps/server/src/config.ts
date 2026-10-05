@@ -47,6 +47,9 @@ const envSchema = z.object({
 
 export type Config = z.infer<typeof envSchema>;
 
+/** The value shipped in the example files. Fine for local development, never for production. */
+export const PLACEHOLDER_JWT_SECRET_PREFIX = 'change-me';
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // Render provides the service's public address as RENDER_EXTERNAL_URL; with the web app served from
   // the same address it is the one origin that needs to be allowed.
@@ -59,6 +62,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error(
       `Invalid or missing environment variables:\n${lines.join('\n')}\n` +
         'Copy apps/server/.env.example to apps/server/.env and fill in the values.',
+    );
+  }
+  if (
+    parsed.data.NODE_ENV === 'production' &&
+    parsed.data.JWT_SECRET.startsWith(PLACEHOLDER_JWT_SECRET_PREFIX)
+  ) {
+    throw new Error(
+      'JWT_SECRET is still the published placeholder. Production refuses to start with it: ' +
+        'set JWT_SECRET to 32 or more random characters (for example: openssl rand -hex 32).',
     );
   }
   return parsed.data;

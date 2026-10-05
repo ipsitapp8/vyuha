@@ -7,6 +7,8 @@ const ASSIGNMENTS = [
   { email: 'trainee2@vyuha.local', role: 'SECTION_CDR', unitId: 'b-sec1' },
   { email: 'trainee3@vyuha.local', role: 'ISR_OPERATOR', unitId: 'b-uav' },
 ] as const;
+/** Assigned through the lobby selects in the browser rather than over REST (seed name of trainee3). */
+const UI_ASSIGNED = { ...ASSIGNMENTS[2], name: 'Rohan Das' } as const;
 
 async function apiLogin(request: APIRequestContext, email: string): Promise<void> {
   const res = await request.post(`${API}/auth/login`, { data: { email, password: PASSWORD } });
@@ -43,10 +45,13 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
     await apiLogin(ctx, a.email);
     const joined = await ctx.post(`${API}/sessions/join`, { data: { code: session.code } });
     const { playerId } = (await joined.json()) as { playerId: string };
-    const put = await instructorApi.put(`${API}/sessions/${session.id}/players/${playerId}`, {
-      data: { teamId, role: a.role, unitId: a.unitId },
-    });
-    expect(put.ok(), `assign ${a.email}`).toBe(true);
+    // The drone operator is assigned in the browser below, so a cross-origin PUT is exercised.
+    if (a.email !== UI_ASSIGNED.email) {
+      const put = await instructorApi.put(`${API}/sessions/${session.id}/players/${playerId}`, {
+        data: { teamId, role: a.role, unitId: a.unitId },
+      });
+      expect(put.ok(), `assign ${a.email}`).toBe(true);
+    }
     await ctx.dispose();
   }
 
@@ -55,6 +60,30 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
   await signIn(instructorPage, 'instructor@vyuha.local');
   await instructorPage.goto(`/instructor/sessions/${session.id}`);
   await expect(instructorPage.getByText('Trainees (3)')).toBeVisible();
+
+  // ---- assign the last trainee through the lobby selects (browser PUT, needs its CORS preflight) ----
+  const blocked: string[] = [];
+  instructorPage.on('console', (m) => {
+    if (m.type() === 'error' && /CORS|blocked/i.test(m.text())) blocked.push(m.text());
+  });
+  const who = UI_ASSIGNED.name;
+  await instructorPage.getByLabel(`Team for ${who}`).selectOption({ label: 'Alpha' });
+  await expect(instructorPage.getByLabel(`Team for ${who}`)).toHaveValue(teamId);
+  await instructorPage.getByLabel(`Role for ${who}`).selectOption(UI_ASSIGNED.role);
+  await expect(instructorPage.getByLabel(`Role for ${who}`)).toHaveValue(UI_ASSIGNED.role);
+  await instructorPage.getByLabel(`Unit for ${who}`).selectOption(UI_ASSIGNED.unitId);
+  await expect(instructorPage.getByLabel(`Unit for ${who}`)).toHaveValue(UI_ASSIGNED.unitId);
+  const lobbyNow = (await (
+    await instructorApi.get(`${API}/sessions/${session.id}/lobby`)
+  ).json()) as {
+    players: { name: string; teamId: string | null; role: string | null; unitId: string | null }[];
+  };
+  expect(lobbyNow.players.find((p) => p.name === who)).toMatchObject({
+    teamId,
+    role: UI_ASSIGNED.role,
+    unitId: UI_ASSIGNED.unitId,
+  });
+  expect(blocked, 'no request blocked by CORS').toEqual([]);
 
   const section = await (await browser.newContext()).newPage();
   const drone = await (await browser.newContext()).newPage();
@@ -94,10 +123,9 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
   await section.getByLabel('Based on order (optional)').selectOption({ index: 1 });
   await section.getByLabel(/Rationale/).fill('Order looked like it came from HQ');
   await section.getByRole('button', { name: 'Submit decision' }).click();
-  // The server confirms it has queued the decision; the engine applies it on its next tick, so give
-  // it a few ticks before the instructor ends the exercise, or the decision could be left out of the review.
+  // The server confirms it has queued the decision. Ending straight away is safe: the session manager
+  // applies whatever is still queued in a final tick before it closes the exercise.
   await expect(section.getByText('Decision recorded.')).toBeVisible();
-  await section.waitForTimeout(3000);
 
   // ---- end the exercise, open the review, export the PDF ----
   await instructorPage.getByRole('button', { name: 'End exercise' }).click();

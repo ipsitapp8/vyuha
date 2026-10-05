@@ -143,12 +143,35 @@ describe('decisions: confidence, latency, correctness, spoof logging', () => {
     expect(ofType(events, 'SPOOF_ACTED')).toHaveLength(0);
   });
 
-  it('complying after authentication exposed the spoof is wrong but not "unauthenticated"', () => {
+  it('complying after authentication FAILED still counts as acting on the spoof', () => {
     const s = makeState();
     giveOrder(s, 'p-pl', 'o1', { spoof: true });
     s.knowledge['p-pl']!.inbox[0]!.authState = 'FAILED';
     const { events } = run(s, 1, { 1: [decide({ basedOnMessageId: 'o1' })] });
     expect(decisionOf(events)?.['outcome']).toBe(0);
+    expect(decisionOf(events)?.['spoofActed']).toBe(true);
+    const acted = ofType(events, 'SPOOF_ACTED');
+    expect(acted).toHaveLength(1);
+    expect(acted[0]?.payload['authState']).toBe('FAILED');
+    expect(acted[0]?.visibleTo).toEqual(['instructor']);
+  });
+
+  it('complying without authenticating records the order as unchallenged', () => {
+    const s = makeState();
+    giveOrder(s, 'p-pl', 'o1', { spoof: true });
+    const { events } = run(s, 1, { 1: [decide({ basedOnMessageId: 'o1' })] });
+    expect(ofType(events, 'SPOOF_ACTED')[0]?.payload['authState']).toBe('NONE');
+  });
+
+  it('refusing after authentication FAILED is correct and is not acting on the spoof', () => {
+    const s = makeState();
+    giveOrder(s, 'p-pl', 'o1', { spoof: true });
+    s.knowledge['p-pl']!.inbox[0]!.authState = 'FAILED';
+    const { events } = run(s, 1, {
+      1: [decide({ actionType: 'IGNORE_ORDER', basedOnMessageId: 'o1' })],
+    });
+    expect(decisionOf(events)?.['outcome']).toBe(1);
+    expect(decisionOf(events)?.['spoofActed']).toBe(false);
     expect(ofType(events, 'SPOOF_ACTED')).toHaveLength(0);
   });
 
