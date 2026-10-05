@@ -162,6 +162,7 @@ describe('two sign-in options', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Fill in the demo login' }));
     expect(screen.getByLabelText('Email')).toHaveValue('instructor@vyuha.local');
     expect(screen.getByLabelText('Password')).toHaveValue('Vyuha@123');
+    expect(screen.getByRole('status')).toHaveTextContent('Filled in. Now press Sign in.');
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(login).toHaveBeenCalledWith({
       email: 'instructor@vyuha.local',

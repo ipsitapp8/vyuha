@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Role } from '@vyuha/shared';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ interface Props {
 /** Tells a visitor which demo email and password work on this sign-in page, with a button that fills them in. */
 export function DemoAccess({ role, onFill }: Props) {
   const { t } = useTranslation();
+  const [filled, setFilled] = useState(false);
   if (!SHOW_DEMO_LOGIN) return null;
   const email = DEMO_EMAIL[role];
   return (
@@ -51,10 +53,18 @@ export function DemoAccess({ role, onFill }: Props) {
         type="button"
         variant="outline"
         className="mt-3 w-full border-primary text-primary"
-        onClick={() => onFill(email, DEMO_PASSWORD)}
+        onClick={() => {
+          onFill(email, DEMO_PASSWORD);
+          setFilled(true);
+        }}
       >
         {t('auth.demo.fill')}
       </Button>
+      {filled ? (
+        <p role="status" className="mt-2 font-medium text-green-700">
+          {t('auth.demo.filled')}
+        </p>
+      ) : null}
     </aside>
   );
 }

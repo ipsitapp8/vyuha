@@ -86,6 +86,7 @@
     "demo": {
       "title": "Demo access",
       "fill": "Fill in the demo login",
+      "filled": "Filled in. Now press Sign in.",
       "INSTRUCTOR": {
         "hint": "Trying the prototype? Use this shared instructor account to build and run exercises."
       },
