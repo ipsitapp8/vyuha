@@ -7,6 +7,7 @@ import { loginBodySchema, type LoginBody, type Role } from '@vyuha/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { homePathFor } from '@/auth/guards';
 import { AppHeader } from '@/components/AppHeader';
+import { DemoAccess } from '@/components/DemoAccess';
 import { FormField } from '@/components/FormField';
 import { Button } from '@/components/ui/button';
 import { ApiRequestError } from '@/lib/api';
@@ -29,6 +30,7 @@ export function LoginPage({ portal }: { portal: Role }) {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginBody>({ resolver: zodResolver(loginBodySchema) });
 
@@ -89,6 +91,14 @@ export function LoginPage({ portal }: { portal: Role }) {
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? t('auth.signingIn') : t('auth.signInTitle')}
           </Button>
+          <DemoAccess
+            role={portal}
+            onFill={(email, password) => {
+              setSubmitError(null);
+              setValue('email', email, { shouldValidate: true });
+              setValue('password', password, { shouldValidate: true });
+            }}
+          />
           {portal === 'TRAINEE' ? (
             <p className="text-center text-sm text-muted-foreground">
               {t('auth.newTrainee')}{' '}

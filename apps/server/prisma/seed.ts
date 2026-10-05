@@ -7,8 +7,13 @@ import { ingestScenarioGeo } from '../src/geo/ingest';
 import { createOpenMeteoNetwork } from '../src/geo/openMeteo';
 import { SEED_SCENARIOS } from '../src/seed/scenarios';
 
-/** Demo accounts share one password. A public deployment sets SEED_PASSWORD so it is never the published one. */
+/** Demo accounts share one password (SEED_PASSWORD, default Vyuha@123). */
 const DEMO_PASSWORD = process.env['SEED_PASSWORD'] ?? 'Vyuha@123';
+/**
+ * SEED_RESET_PASSWORDS=true makes every start set the demo accounts back to DEMO_PASSWORD, so the demo login shown
+ * on the sign-in pages keeps working. Leave it off for a real deployment: accounts then keep their own password.
+ */
+const RESET_PASSWORDS = process.env['SEED_RESET_PASSWORDS'] === 'true';
 
 const INSTRUCTOR = {
   name: 'Col. Instructor',
@@ -27,7 +32,7 @@ const TRAINEE_NAMES = [
 async function main(): Promise<void> {
   const instructor = await prisma.user.upsert({
     where: { email: INSTRUCTOR.email },
-    update: {},
+    update: RESET_PASSWORDS ? { passwordHash: await hashPassword(INSTRUCTOR.password) } : {},
     create: {
       name: INSTRUCTOR.name,
       email: INSTRUCTOR.email,
@@ -40,7 +45,7 @@ async function main(): Promise<void> {
     const email = `trainee${i + 1}@vyuha.local`;
     await prisma.user.upsert({
       where: { email },
-      update: {},
+      update: RESET_PASSWORDS ? { passwordHash: await hashPassword(DEMO_PASSWORD) } : {},
       create: { name, email, passwordHash: await hashPassword(DEMO_PASSWORD), role: 'TRAINEE' },
     });
   }

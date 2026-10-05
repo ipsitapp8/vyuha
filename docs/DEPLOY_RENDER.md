@@ -23,8 +23,14 @@ area tiles, fonts and sprites are inside the image.
 
 ## Sign-in details
 
-The demo accounts are created on first start. Their password is a random value Render generated, not a
-published one: open the `vyuha` service, go to **Environment** and read `SEED_PASSWORD`.
+The demo accounts are created on first start, and both sign-in pages show their email and password in a
+**Demo access** box so a visitor is never stuck. The password is `SEED_PASSWORD` (`Vyuha@123` in
+`render.yaml`). With `SEED_RESET_PASSWORDS=true` every start sets the demo accounts back to it, so an account
+created by an earlier deploy with a different password works again.
+
+This is meant for a public prototype: anyone can sign in as the demo instructor. For a real deployment set
+`SEED_PASSWORD` to a generated value, remove `SEED_RESET_PASSWORDS`, and build the web app with
+`VITE_SHOW_DEMO_LOGIN=false` to hide the box.
 
 | Account                                              | Portal           |
 | ---------------------------------------------------- | ---------------- |
@@ -34,8 +40,8 @@ published one: open the `vyuha` service, go to **Environment** and read `SEED_PA
 Anyone can also create their own trainee account on the Trainee login page. Instructor accounts are
 never self-registered.
 
-`SEED_PASSWORD` is only used when an account is first created. Changing it later does not change the
-password of an account that already exists.
+Without `SEED_RESET_PASSWORDS`, `SEED_PASSWORD` is only used when an account is first created: changing it
+later does not change the password of an account that already exists.
 
 ## Settings
 
@@ -45,7 +51,8 @@ Set by the Blueprint or the image, so you normally touch none of them:
 | ----------------- | ---------------------------------------- | ------------------------------------------------------------- |
 | `DATABASE_URL`    | from `vyuha-db`                          | PostgreSQL connection                                         |
 | `JWT_SECRET`      | generated                                | signs the sign-in cookie                                      |
-| `SEED_PASSWORD`   | generated                                | password of the demo accounts                                 |
+| `SEED_PASSWORD`   | `Vyuha@123`                              | password of the demo accounts (shown on the sign-in pages)    |
+| `SEED_RESET_PASSWORDS` | `true`                              | sets the demo accounts back to `SEED_PASSWORD` on every start |
 | `SEED_ON_START`   | `true`                                   | adds the demo accounts and Op Silent Ridge when missing       |
 | `RENDER_EXTERNAL_URL` | provided by Render                   | used as the allowed origin, so `CORS_ORIGIN` need not be set  |
 | `API_PREFIX`      | `/api` (image)                           | API address under the web app                                 |

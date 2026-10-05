@@ -82,6 +82,16 @@
         "wrongAccount": "This is not a trainee account. Instructors should use the instructor login.",
         "switchPrompt": "Are you a trainee?"
       }
+    },
+    "demo": {
+      "title": "Demo access",
+      "fill": "Fill in the demo login",
+      "INSTRUCTOR": {
+        "hint": "Trying the prototype? Use this shared instructor account to build and run exercises."
+      },
+      "TRAINEE": {
+        "hint": "Trying the prototype? Use this shared trainee account, or create your own below."
+      }
     }
   },
   "validation": {

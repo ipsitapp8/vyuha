@@ -144,6 +144,33 @@ describe('two sign-in options', () => {
     expect(screen.queryByText(/not an instructor account/)).not.toBeInTheDocument();
   });
 
+  it('shows a working demo email and password on each sign-in page', () => {
+    const first = app('/login/instructor');
+    const box = within(screen.getByRole('complementary'));
+    expect(box.getByText('instructor@vyuha.local')).toBeInTheDocument();
+    expect(box.getByText('Vyuha@123')).toBeInTheDocument();
+    first.unmount();
+    app('/login/trainee');
+    expect(
+      within(screen.getByRole('complementary')).getByText('trainee1@vyuha.local'),
+    ).toBeInTheDocument();
+  });
+
+  it('fills in the demo login and signs in with it', async () => {
+    login.mockResolvedValue(instructor);
+    app('/login/instructor');
+    await userEvent.click(screen.getByRole('button', { name: 'Fill in the demo login' }));
+    expect(screen.getByLabelText('Email')).toHaveValue('instructor@vyuha.local');
+    expect(screen.getByLabelText('Password')).toHaveValue('Vyuha@123');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(login).toHaveBeenCalledWith({
+      email: 'instructor@vyuha.local',
+      password: 'Vyuha@123',
+      portal: 'INSTRUCTOR',
+    });
+    expect(await screen.findByText('instructor home')).toBeInTheDocument();
+  });
+
   it('shows the normal message for a wrong password', async () => {
     login.mockRejectedValue(new ApiRequestError('bad', 401, 'INVALID_CREDENTIALS'));
     app('/login/trainee');

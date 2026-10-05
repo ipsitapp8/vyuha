@@ -18,11 +18,16 @@ services:
         fromDatabase:
           name: vyuha-db
           property: connectionString
-      # Random values generated once by Render; read them in the dashboard under Environment.
+      # Random value generated once by Render; read it in the dashboard under Environment.
       - key: JWT_SECRET
         generateValue: true
+      # Public prototype: the demo accounts use the password shown on the sign-in pages, and every start sets
+      # them back to it. For a real deployment use generateValue: true, remove SEED_RESET_PASSWORDS and build the
+      # web app with VITE_SHOW_DEMO_LOGIN=false.
       - key: SEED_PASSWORD
-        generateValue: true
+        value: Vyuha@123
+      - key: SEED_RESET_PASSWORDS
+        value: 'true'
       # Creates the demo accounts and Op Silent Ridge on start (safe to leave on: it only adds what is missing).
       - key: SEED_ON_START
         value: 'true'
