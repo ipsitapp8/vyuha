@@ -95,6 +95,17 @@ export function timelineText(
       });
     case 'JAMMING':
       return t('aar.timelineSection.JAMMING', { channel: s('channel'), level: s('level') });
+    case 'C2_DETECTED':
+      return t('aar.timelineSection.C2_DETECTED', {
+        name: nameOf(item.playerId),
+        seconds: s('seconds'),
+        channel: s('via'),
+      });
+    case 'UAV_SPOOF_ACTED':
+      return t('aar.timelineSection.UAV_SPOOF_ACTED', {
+        name: nameOf(item.playerId),
+        contact: s('contact'),
+      });
   }
 }
 

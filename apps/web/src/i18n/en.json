@@ -325,7 +325,8 @@
       "channelSwitched": "Team switched to {{channel}}",
       "arrived": "A unit reached its destination",
       "isr": "ISR tasked",
-      "moveOrdered": "Move order accepted"
+      "moveOrdered": "Move order accepted",
+      "c2Detected": "Cross-check complete: your teammate positions had been tampered with and are now corrected."
     },
     "degradation": {
       "jammed": "JAMMED",
@@ -528,13 +529,26 @@
       "decision": "Decision {{action}} at {{confidence}}%",
       "spoof": "Spoof delivered: \"{{text}}\"",
       "jamming": "Effective jamming changed",
-      "msel": "MSEL changed ({{change}})"
+      "msel": "MSEL changed ({{change}})",
+      "gpsStarted": "UAV GPS spoof on {{unit}}: reports shifted {{offset}} m",
+      "gpsEnded": "UAV GPS spoof on {{unit}} ended",
+      "c2Started": "C2 node compromised for {{unit}}",
+      "c2Detected": "C2 compromise detected after {{seconds}} s, cross-check over {{channel}}",
+      "c2Ended": "C2 compromise ended undetected after {{seconds}} s",
+      "uavActed": "Acted on spoofed UAV data (contact {{contact}})",
+      "probeStarted": "Situation check started",
+      "probeScored": "Situation check scored: {{score}}"
     },
     "outcome": {
       "DELIVERED": "delivered",
       "DELAYED": "delayed",
       "DROPPED": "dropped",
       "CORRUPTED": "corrupted"
+    },
+    "effects": {
+      "title": "Air and cyber effects in force",
+      "gps": "{{unit}}: GPS spoofed, reports {{offset}} m off, until {{until}}",
+      "c2": "{{name}}: C2 node compromised on {{channel}}, teammates shown {{drift}} m off"
     }
   },
   "injectEditor": {
@@ -567,7 +581,9 @@
       "SPOOF_ORDER": "Spoofed order",
       "RUNNER_DISPATCH": "Runner dispatch",
       "WEATHER_CHANGE": "Weather change",
-      "ADVERSARY_MOVE": "Adversary move"
+      "ADVERSARY_MOVE": "Adversary move",
+      "GPS_SPOOF": "UAV GPS spoof",
+      "C2_COMPROMISE": "C2 node compromised"
     },
     "defaultTitles": {
       "JAM_CHANNEL": "Jamming on {{channel}}",
@@ -576,8 +592,18 @@
       "SPOOF_ORDER": "Spoofed order",
       "RUNNER_DISPATCH": "Runner dispatch",
       "WEATHER_CHANGE": "Weather change",
-      "ADVERSARY_MOVE": "Adversary move"
-    }
+      "ADVERSARY_MOVE": "Adversary move",
+      "GPS_SPOOF": "UAV GPS spoofed",
+      "C2_COMPROMISE": "C2 node compromised"
+    },
+    "uav": "UAV",
+    "offset": "Position offset (m)",
+    "bearing": "Offset bearing (degrees)",
+    "c2Target": "Trainee unit",
+    "drift": "Drift (m per second)",
+    "gpsHelp": "Everything this UAV reports (its own position and its contacts) is shifted by the offset. Nobody on the team is told.",
+    "c2Help": "Teammate positions on this trainee’s map drift slowly wrong, with no alert, until they hear from a teammate over a different channel or by runner.",
+    "noUav": "This scenario has no friendly air unit."
   },
   "msel": {
     "back": "← Scenario",
@@ -659,7 +685,13 @@
         "HIGH_DRIFT": "The picture was far from reality: on average {{errorM}} m of position error and {{missed}} hostile unit(s) missed.",
         "NO_SWITCH_WHILE_JAMMED": "Team {{team}} did not switch away from heavily jammed {{channel}} for {{seconds}} s.",
         "SLOW_SWITCH": "Team {{team}} took {{seconds}} s to leave jammed {{channel}}.",
-        "QUICK_SWITCH": "Team {{team}} left jammed {{channel}} after only {{seconds}} s: a good use of the PACE plan."
+        "QUICK_SWITCH": "Team {{team}} left jammed {{channel}} after only {{seconds}} s: a good use of the PACE plan.",
+        "LOW_SA": "Situation awareness was low: {{score}} out of 100 on average over {{probes}} freeze probe(s).",
+        "GOOD_SA": "Situation awareness was strong: {{score}} out of 100 on average over {{probes}} freeze probe(s).",
+        "ACTED_ON_SPOOFED_UAV": "Acted on spoofed UAV data: engaged or reported up {{count}} contact(s) placed by a UAV whose navigation was being spoofed.",
+        "GPS_SPOOF_SUSPECTED": "Graded {{count}} report(s) from the spoofed UAV as unreliable: the bad positions were noticed.",
+        "C2_DETECTED": "Detected the C2 compromise at {{time}} (tick {{tick}}), {{seconds}} s after it began, by cross-checking over {{via}}.",
+        "C2_NOT_DETECTED": "Never detected the C2 compromise: teammate positions were wrong for {{seconds}} s with no cross-check over another channel or a runner."
       }
     },
     "replay": {
@@ -751,7 +783,9 @@
       "CHANNEL_SWITCH": "{{name}} switched the team channel {{from}} → {{to}}",
       "DECISION": "{{name}} decided {{action}} at {{confidence}}% ({{outcome}})",
       "JAMMING": "Jamming changed: heaviest on {{channel}} at {{level}}%",
-      "control": "Exercise control"
+      "control": "Exercise control",
+      "C2_DETECTED": "{{name}} detected the C2 compromise after {{seconds}} s, over {{channel}}",
+      "UAV_SPOOF_ACTED": "{{name}} acted on spoofed UAV data (contact {{contact}})"
     },
     "openReview": "Open after action review",
     "review": "Review"

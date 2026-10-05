@@ -77,7 +77,10 @@ export function makeRealReport(
   sensor: EngineUnit,
   subject: EngineUnit,
 ): Report {
-  const relIdx = drawReliabilityIndex(rng, sensorReliabilityIndex(sensor, state.weather));
+  // A UAV tasked through REQUEST_ISR loiters over its target: one grade more reliable while tasked.
+  const tasked = sensor.domain === 'AIR' && sensor.isrUntilTick > state.tick;
+  const sensorIdx = clamp(sensorReliabilityIndex(sensor, state.weather) - (tasked ? 1 : 0), 0, 5);
+  const relIdx = drawReliabilityIndex(rng, sensorIdx);
   const sigma = POSITION_SIGMA_M[relIdx] ?? 2000;
   const east = gaussian(rng) * sigma;
   const north = gaussian(rng) * sigma;
@@ -97,6 +100,7 @@ export function makeRealReport(
     trueCredibility: drawCredibility(rng, relIdx),
     ghost: false,
     conflictGroup: null,
+    gpsSpoofed: false,
   };
 }
 
@@ -120,6 +124,7 @@ export function makeGhostReport(state: TruthState, rng: Rng, sensor: EngineUnit)
     trueCredibility: drawCredibility(rng, relIdx),
     ghost: true,
     conflictGroup: null,
+    gpsSpoofed: false,
   };
 }
 
@@ -161,6 +166,7 @@ export function makeConflictingPair(
     trueCredibility: drawCredibility(rng, altRelIdx),
     ghost: false,
     conflictGroup: group,
+    gpsSpoofed: false,
   };
   return [honest, alt];
 }

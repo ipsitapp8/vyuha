@@ -1,5 +1,13 @@
 import { CHANNELS, CONTACT_TTL_TICKS, SWITCH_PENALTY_TICKS } from './config';
-import { currentJamming, getPlayer, getTeam, getUnit, satcomUp } from './state';
+import {
+  believedFriendlyPosition,
+  currentJamming,
+  getPlayer,
+  getTeam,
+  getUnit,
+  reportedPosition,
+  satcomUp,
+} from './state';
 import { linkQuality } from './radio';
 import { profileFor } from './config';
 import type {
@@ -31,7 +39,7 @@ export function computePerceivedState(truth: TruthState, playerId: string): Perc
         unitId,
         name: u?.name ?? unitId,
         type: u?.type ?? 'UNKNOWN',
-        position: { ...fix.position },
+        position: believedFriendlyPosition(truth, playerId, unitId, fix),
         observedTick: fix.observedTick,
         ageTicks: truth.tick - fix.observedTick,
       };
@@ -83,7 +91,8 @@ export function computePerceivedState(truth: TruthState, playerId: string): Perc
       unitId: unit.id,
       name: unit.name,
       type: unit.type,
-      position: { ...unit.position },
+      // what the unit's own navigation says: shifted while its GPS is being spoofed
+      position: reportedPosition(truth, unit),
       heading: unit.heading,
       speed: unit.speed,
       strength: unit.strength,

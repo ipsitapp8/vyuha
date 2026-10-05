@@ -67,6 +67,8 @@ export interface Report {
   trueCredibility: CredibilityGrade;
   ghost: boolean;
   conflictGroup: string | null;
+  /** Truth-only: the sensor's navigation was spoofed, so the reported position is shifted. */
+  gpsSpoofed: boolean;
 }
 
 export interface DeliveredReport {
@@ -155,6 +157,77 @@ export interface JamWindow {
   channel: Channel;
   intensity: number;
   untilTick: number;
+}
+
+export type ProbeChannelAnswer = Channel | 'NONE';
+
+/** What a trainee answers when the exercise is frozen for a situation-awareness probe. */
+export interface ProbeAnswer {
+  /** Where the trainee believes hostile contacts are. */
+  contacts: LatLon[];
+  /** Where the trainee believes each teammate's unit is. */
+  teammates: { unitId: string; position: LatLon }[];
+  jammedChannel: ProbeChannelAnswer;
+}
+
+/** An open probe: the truth frozen at its tick, and who has still to answer. Never sent to trainees. */
+export interface ProbeState {
+  id: string;
+  tick: number;
+  expiresAtTick: number;
+  hostiles: { unitId: string; type: string; position: LatLon }[];
+  friendlies: { playerId: string; unitId: string; position: LatLon }[];
+  jammedChannel: ProbeChannelAnswer;
+  pending: string[];
+}
+
+/** One trainee's result for one probe (instructor and review only). */
+export interface ProbeScore {
+  probeId: string;
+  probeTick: number;
+  playerId: string;
+  answered: boolean;
+  /** 0..100 */
+  score: number;
+  /** 0..1 */
+  contactScore: number;
+  /** 0..1 */
+  teammateScore: number;
+  channelCorrect: boolean;
+  matched: { unitId: string; marker: number; errorM: number }[];
+  missedUnitIds: string[];
+  ghostCount: number;
+  avgContactErrorM: number | null;
+  teammateErrors: { unitId: string; errorM: number | null }[];
+  avgTeammateErrorM: number | null;
+  answer: ProbeAnswer | null;
+  truth: {
+    hostiles: { unitId: string; type: string; position: LatLon }[];
+    teammates: { unitId: string; position: LatLon }[];
+    jammedChannel: ProbeChannelAnswer;
+  };
+}
+
+/** A friendly UAV whose navigation is spoofed: everything it reports is shifted by this offset. */
+export interface GpsSpoof {
+  injectId: string;
+  unitId: string;
+  eastM: number;
+  northM: number;
+  untilTick: number;
+}
+
+/** A compromised C2 node: one trainee's picture of their teammates drifts away from what was received. */
+export interface C2Compromise {
+  injectId: string;
+  playerId: string;
+  sinceTick: number;
+  untilTick: number;
+  /** The team net the compromised node sits on; a fix over any other channel is a cross-check. */
+  channel: Channel;
+  driftMps: number;
+  /** Direction each teammate's marker drifts in, by unit id (degrees). */
+  bearings: Record<string, number>;
 }
 
 export interface TruthState {

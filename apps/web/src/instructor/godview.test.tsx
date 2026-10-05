@@ -128,6 +128,8 @@ const truth: TruthViewDto = {
   satcomUp: true,
   weather: { visibilityM: 9000, precipitationMm: 0, windKph: 5 },
   manualJamming: { VHF: 0, HF: 0, SATCOM: 0, DATALINK: 0, RUNNER: 0 },
+  probe: null,
+  effects: { gpsSpoofs: [], c2Compromises: [] },
   msel: [
     {
       fired: false,

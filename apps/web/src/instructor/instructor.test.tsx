@@ -121,6 +121,78 @@ describe('InjectEditor', () => {
     expect(out[3]).toMatchObject({ unitId: 'r-recce', altPosition: { lat: 34.17, lon: 77.57 } });
   });
 
+  it('builds the air and cyber injects: only air units are offered as the UAV', async () => {
+    const withDomains: UnitRef[] = [
+      { id: 'b-pl', name: 'Alpha Platoon', side: 'BLUE', domain: 'LAND' },
+      { id: 'b-uav', name: 'Falcon UAV', side: 'BLUE', domain: 'AIR' },
+      { id: 'r-uav', name: 'Hostile UAV', side: 'RED', domain: 'AIR' },
+    ];
+    const out: Inject[] = [];
+    const editor = (type: 'GPS_SPOOF' | 'C2_COMPROMISE') =>
+      render(
+        <InjectEditor
+          fixedType={type}
+          withTick={false}
+          units={withDomains}
+          anchor={anchor}
+          submitLabel="Go"
+          onSubmit={(i) => void out.push(i)}
+        />,
+      );
+
+    const a = editor('GPS_SPOOF');
+    const uav = screen.getByLabelText('UAV');
+    expect(
+      within(uav)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Falcon UAV (b-uav)']);
+    await userEvent.clear(screen.getByLabelText('Position offset (m)'));
+    await userEvent.type(screen.getByLabelText('Position offset (m)'), '1500');
+    await userEvent.click(screen.getByRole('button', { name: 'Go' }));
+    a.unmount();
+
+    editor('C2_COMPROMISE');
+    await userEvent.selectOptions(screen.getByLabelText('Trainee unit'), 'b-uav');
+    await userEvent.click(screen.getByRole('button', { name: 'Go' }));
+
+    expect(out).toEqual([
+      {
+        id: 'new',
+        tick: 0,
+        title: 'UAV GPS spoofed',
+        type: 'GPS_SPOOF',
+        unitId: 'b-uav',
+        offsetM: 1500,
+        bearingDeg: 90,
+        durationTicks: 120,
+      },
+      {
+        id: 'new',
+        tick: 0,
+        title: 'C2 node compromised',
+        type: 'C2_COMPROMISE',
+        targetUnitId: 'b-uav',
+        driftMps: 5,
+        durationTicks: 120,
+      },
+    ]);
+  });
+
+  it('says so when the scenario has no air unit to spoof', () => {
+    render(
+      <InjectEditor
+        fixedType="GPS_SPOOF"
+        withTick={false}
+        units={[{ id: 'b-pl', name: 'Alpha Platoon', side: 'BLUE', domain: 'LAND' }]}
+        anchor={anchor}
+        submitLabel="Go"
+        onSubmit={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('no friendly air unit');
+  });
+
   it('shows validation problems instead of submitting bad values', async () => {
     const onSubmit = vi.fn();
     render(
@@ -285,6 +357,8 @@ const truth = (over: Partial<TruthViewDto> = {}): TruthViewDto => ({
   satcomUp: true,
   weather: { visibilityM: 9000, precipitationMm: 0, windKph: 5 },
   manualJamming: { VHF: 0.2, HF: 0, SATCOM: 0, DATALINK: 0, RUNNER: 0 },
+  probe: null,
+  effects: { gpsSpoofs: [], c2Compromises: [] },
   msel: [],
   players: {},
   drift: {},

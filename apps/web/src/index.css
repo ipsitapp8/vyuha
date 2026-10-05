@@ -238,3 +238,50 @@ button.vy-contact {
 .vy-believed .vy-label {
   color: #fde68a;
 }
+
+/* ---- Situation-awareness probe (SAGAT) ---- */
+.vy-probe-contact .vy-dot {
+  background: rgb(220 38 38 / 0.25);
+  border: 2px dashed #b91c1c;
+  border-radius: 3px;
+}
+.vy-probe-teammate .vy-dot {
+  background: rgb(37 99 235 / 0.2);
+  border: 2px dashed #1d4ed8;
+}
+.vy-probe .vy-label,
+.vy-probe-review .vy-label {
+  padding: 0 4px;
+  font-size: 11px;
+  color: #fff;
+  background: rgb(0 0 0 / 0.75);
+  border-radius: 3px;
+}
+.vy-pr-true-hostile .vy-dot {
+  background: #dc2626;
+  border-color: #7f1d1d;
+  border-radius: 3px;
+}
+.vy-pr-missed-hostile .vy-dot {
+  background: #fff;
+  border: 3px solid #dc2626;
+  border-radius: 3px;
+}
+.vy-pr-said-contact .vy-dot {
+  background: rgb(245 158 11 / 0.35);
+  border: 2px dashed #b45309;
+  border-radius: 3px;
+}
+.vy-pr-ghost-contact .vy-dot {
+  background: transparent;
+  border: 2px dotted #6b7280;
+  border-radius: 3px;
+}
+.vy-pr-true-teammate .vy-dot {
+  background: #2563eb;
+  border-color: #1e3a8a;
+}
+.vy-pr-said-teammate .vy-dot {
+  background: rgb(37 99 235 / 0.15);
+  border: 2px dashed #1d4ed8;
+}

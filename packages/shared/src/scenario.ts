@@ -104,6 +104,26 @@ export const injectSchema = z.discriminatedUnion('type', [
     unitId: z.string().min(1),
     destination: latLonSchema,
   }),
+  // Air domain: the navigation of a friendly UAV is spoofed. Everything it reports (its own position
+  // and its contacts) is shifted by one consistent offset; nobody on the team is told.
+  z.object({
+    ...injectBase,
+    type: z.literal('GPS_SPOOF'),
+    unitId: z.string().min(1),
+    offsetM: z.number().min(100).max(20_000),
+    bearingDeg: z.number().min(0).lt(360),
+    durationTicks: z.number().int().min(1),
+  }),
+  // Cyber domain: the C2 node feeding one trainee is compromised. Teammates' last-known positions on
+  // that trainee's picture drift slowly wrong, with no alert, until they cross-check over a different
+  // channel or by runner.
+  z.object({
+    ...injectBase,
+    type: z.literal('C2_COMPROMISE'),
+    targetUnitId: z.string().min(1),
+    driftMps: z.number().min(0.5).max(50),
+    durationTicks: z.number().int().min(1),
+  }),
 ]);
 export type Inject = z.infer<typeof injectSchema>;
 export type InjectType = Inject['type'];
@@ -148,11 +168,12 @@ export type UpdateMselBody = z.infer<typeof updateMselBodySchema>;
  */
 export function validateMselReferences(
   msel: readonly Inject[],
-  units: readonly Pick<ScenarioUnit, 'id' | 'side'>[],
+  units: readonly (Pick<ScenarioUnit, 'id' | 'side'> & Partial<Pick<ScenarioUnit, 'domain'>>)[],
   bounds?: AreaBounds,
 ): string[] {
   const problems: string[] = [];
   const side = new Map(units.map((u) => [u.id, u.side]));
+  const domain = new Map(units.map((u) => [u.id, u.domain]));
   const seen = new Set<string>();
   const inside = (p: LatLon): boolean =>
     !bounds ||
@@ -192,6 +213,16 @@ export function validateMselReferences(
         need(i.unitId, 'unit', (s) => s !== 'BLUE');
         if (!inside(i.destination))
           problems.push(`${at}: destination is outside the exercise area.`);
+        break;
+      case 'GPS_SPOOF': {
+        need(i.unitId, 'UAV', (s) => s === 'BLUE');
+        const d = domain.get(i.unitId);
+        if (d !== undefined && d !== 'AIR')
+          problems.push(`${at}: UAV "${i.unitId}" is not an air unit.`);
+        break;
+      }
+      case 'C2_COMPROMISE':
+        need(i.targetUnitId, 'target unit', (s) => s === 'BLUE');
         break;
       default:
         break;

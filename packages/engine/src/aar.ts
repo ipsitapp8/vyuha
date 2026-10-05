@@ -241,7 +241,15 @@ export function messageFlow(input: AarInput): FlowEdge[] {
 
 // ---- Timeline -----------------------------------------------------------------------------
 
-export type TimelineKind = 'INJECT' | 'SPOOF' | 'AUTH' | 'CHANNEL_SWITCH' | 'DECISION' | 'JAMMING';
+export type TimelineKind =
+  | 'INJECT'
+  | 'SPOOF'
+  | 'AUTH'
+  | 'CHANNEL_SWITCH'
+  | 'DECISION'
+  | 'JAMMING'
+  | 'C2_DETECTED'
+  | 'UAV_SPOOF_ACTED';
 
 export interface TimelineItem {
   tick: number;
@@ -280,6 +288,22 @@ export function keyTimeline(input: AarInput): TimelineItem[] {
           kind: 'AUTH',
           playerId: str(p['playerId']),
           params: { result: str(p['result']) },
+        });
+        break;
+      case 'C2_COMPROMISE_DETECTED':
+        items.push({
+          tick: e.tick,
+          kind: 'C2_DETECTED',
+          playerId: str(p['playerId']),
+          params: { via: str(p['via']), seconds: num(p['afterTicks']) },
+        });
+        break;
+      case 'SPOOFED_UAV_ACTED':
+        items.push({
+          tick: e.tick,
+          kind: 'UAV_SPOOF_ACTED',
+          playerId: str(p['playerId']),
+          params: { contact: str(p['reportId']) },
         });
         break;
       case 'CHANNEL_SWITCHED':
@@ -381,6 +405,39 @@ export function learningPoints(input: AarInput): LearningPoint[] {
       authStarted.set(id, (authStarted.get(id) ?? 0) + 1);
     }
   }
+  const spoofedReports = new Set(
+    input.events
+      .filter((e) => e.type === 'REPORT_GENERATED' && e.payload['gpsSpoofed'] === true)
+      .map((e) => str(e.payload['reportId'])),
+  );
+  interface C2Case {
+    playerId: string;
+    sinceTick: number;
+    endTick: number;
+    detectedTick: number | null;
+    via: string;
+  }
+  const c2: C2Case[] = [];
+  for (const e of input.events) {
+    const playerId = str(e.payload['playerId']);
+    if (e.type === 'C2_COMPROMISED') {
+      c2.push({
+        playerId,
+        sinceTick: e.tick,
+        endTick: num(e.payload['untilTick']) || input.durationTicks,
+        detectedTick: null,
+        via: '',
+      });
+    } else if (e.type === 'C2_COMPROMISE_DETECTED') {
+      const open = [...c2]
+        .reverse()
+        .find((x) => x.playerId === playerId && x.detectedTick === null);
+      if (open) {
+        open.detectedTick = e.tick;
+        open.via = str(e.payload['via']);
+      }
+    }
+  }
   const contactsReceived = new Map<string, number>();
   for (const e of input.events) {
     if (e.type === 'REPORT_RECEIVED') {
@@ -459,6 +516,47 @@ export function learningPoints(input: AarInput): LearningPoint[] {
     }
     if ((contactsReceived.get(p.id) ?? 0) >= 6 && (m?.gradeCount ?? 0) === 0) {
       add('NEVER_GRADED', 'info', { contacts: contactsReceived.get(p.id) ?? 0 });
+    }
+
+    // Air domain: contacts georeferenced by a UAV whose navigation was spoofed.
+    const uavActed = input.events.filter(
+      (e) => e.type === 'SPOOFED_UAV_ACTED' && e.payload['playerId'] === p.id,
+    ).length;
+    if (uavActed > 0) add('ACTED_ON_SPOOFED_UAV', 'warn', { count: uavActed });
+    const suspected = [...grades.entries()].filter(([key, list]) => {
+      const [who, reportId] = key.split('|');
+      const g = list.at(-1);
+      return (
+        who === p.id &&
+        !!reportId &&
+        spoofedReports.has(reportId) &&
+        !!g &&
+        (LOW_RELIABILITY.has(g.reliability) || g.credibility >= 5)
+      );
+    }).length;
+    if (suspected > 0) add('GPS_SPOOF_SUSPECTED', 'good', { count: suspected });
+
+    // Cyber domain: a compromised C2 node, caught by a cross-check or not at all.
+    for (const c of c2.filter((x) => x.playerId === p.id)) {
+      if (c.detectedTick !== null) {
+        add('C2_DETECTED', 'good', {
+          time: clockOf(c.detectedTick),
+          tick: c.detectedTick,
+          seconds: c.detectedTick - c.sinceTick,
+          via: c.via,
+        });
+      } else {
+        add('C2_NOT_DETECTED', 'warn', {
+          seconds: Math.max(0, Math.min(c.endTick, input.durationTicks) - c.sinceTick),
+        });
+      }
+    }
+
+    const sa = meanSaScore(input.events, p.id);
+    if (sa !== null) {
+      const probes = probeScoresFromEvents(input.events).filter((s) => s.playerId === p.id).length;
+      if (sa < 40) add('LOW_SA', 'warn', { score: Math.round(sa), probes });
+      else if (sa >= 75) add('GOOD_SA', 'good', { score: Math.round(sa), probes });
     }
 
     if (m?.drift && (m.drift.meanPositionErrorM > 1000 || m.drift.meanMissed >= 3)) {

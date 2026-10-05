@@ -8,6 +8,8 @@ export interface UnitRef {
   id: string;
   name: string;
   side: 'BLUE' | 'RED' | 'NEUTRAL';
+  /** Lets the GPS-spoof form offer only air units; without it every friendly unit is offered. */
+  domain?: string;
 }
 
 export const INJECT_TYPES: readonly InjectType[] = [
@@ -18,6 +20,8 @@ export const INJECT_TYPES: readonly InjectType[] = [
   'RUNNER_DISPATCH',
   'WEATHER_CHANGE',
   'ADVERSARY_MOVE',
+  'GPS_SPOOF',
+  'C2_COMPROMISE',
 ];
 const JAMMABLE = ['VHF', 'HF', 'SATCOM', 'DATALINK'] as const;
 const HOSTILE_TYPES = [
@@ -70,9 +74,14 @@ interface Form {
   wind: string;
   destLat: string;
   destLon: string;
+  uavId: string;
+  offsetM: string;
+  bearing: string;
+  c2TargetId: string;
+  drift: string;
 }
 
-function initialForm(p: Props, firstHostile: string, firstBlue: string): Form {
+function initialForm(p: Props, firstHostile: string, firstBlue: string, firstUav: string): Form {
   const base: Form = {
     type: p.fixedType ?? 'JAM_CHANNEL',
     title: '',
@@ -95,6 +104,11 @@ function initialForm(p: Props, firstHostile: string, firstBlue: string): Form {
     wind: '10',
     destLat: p.anchor.lat.toFixed(4),
     destLon: p.anchor.lon.toFixed(4),
+    uavId: firstUav,
+    offsetM: '2000',
+    bearing: '90',
+    c2TargetId: firstBlue,
+    drift: '5',
   };
   const i = p.initial;
   if (!i) return base;
@@ -144,6 +158,21 @@ function initialForm(p: Props, firstHostile: string, firstBlue: string): Form {
         unitId: i.unitId,
         destLat: String(i.destination.lat),
         destLon: String(i.destination.lon),
+      };
+    case 'GPS_SPOOF':
+      return {
+        ...common,
+        uavId: i.unitId,
+        offsetM: String(i.offsetM),
+        bearing: String(i.bearingDeg),
+        duration: String(i.durationTicks),
+      };
+    case 'C2_COMPROMISE':
+      return {
+        ...common,
+        c2TargetId: i.targetUnitId,
+        drift: String(i.driftMps),
+        duration: String(i.durationTicks),
       };
   }
 }
@@ -201,6 +230,23 @@ function candidate(f: Form, id: string, title: string, withTick: boolean): unkno
         unitId: f.unitId,
         destination: { lat: Number(f.destLat), lon: Number(f.destLon) },
       };
+    case 'GPS_SPOOF':
+      return {
+        ...head,
+        type: f.type,
+        unitId: f.uavId,
+        offsetM: Number(f.offsetM),
+        bearingDeg: Number(f.bearing),
+        durationTicks: Number(f.duration),
+      };
+    case 'C2_COMPROMISE':
+      return {
+        ...head,
+        type: f.type,
+        targetUnitId: f.c2TargetId,
+        driftMps: Number(f.drift),
+        durationTicks: Number(f.duration),
+      };
   }
 }
 
@@ -238,8 +284,10 @@ export function InjectEditor(props: Props) {
   const { units, withTick, fixedType, submitLabel, onSubmit, onCancel } = props;
   const hostile = units.filter((u) => u.side !== 'BLUE');
   const blue = units.filter((u) => u.side === 'BLUE');
+  const knowsDomains = blue.some((u) => u.domain !== undefined);
+  const uavs = knowsDomains ? blue.filter((u) => u.domain === 'AIR') : blue;
   const [f, setF] = useState<Form>(() =>
-    initialForm(props, hostile[0]?.id ?? '', blue[0]?.id ?? ''),
+    initialForm(props, hostile[0]?.id ?? '', blue[0]?.id ?? '', uavs[0]?.id ?? ''),
   );
   const [issues, setIssues] = useState<string[]>([]);
   const [failure, setFailure] = useState<string | null>(null);
@@ -465,6 +513,69 @@ export function InjectEditor(props: Props) {
             onChange={(v) => set('destLon', v)}
           />
         </div>
+      ) : null}
+
+      {f.type === 'GPS_SPOOF' ? (
+        <>
+          <p className="text-sm text-muted-foreground">{t('injectEditor.gpsHelp')}</p>
+          {uavs.length === 0 ? (
+            <p role="alert" className="text-sm text-red-700">
+              {t('injectEditor.noUav')}
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Select
+              label={t('injectEditor.uav')}
+              value={f.uavId}
+              options={unitOptions(uavs)}
+              onChange={(v) => set('uavId', v)}
+            />
+            <Field
+              label={t('injectEditor.offset')}
+              type="number"
+              value={f.offsetM}
+              onChange={(v) => set('offsetM', v)}
+            />
+            <Field
+              label={t('injectEditor.bearing')}
+              type="number"
+              value={f.bearing}
+              onChange={(v) => set('bearing', v)}
+            />
+            <Field
+              label={t('injectEditor.duration')}
+              type="number"
+              value={f.duration}
+              onChange={(v) => set('duration', v)}
+            />
+          </div>
+        </>
+      ) : null}
+
+      {f.type === 'C2_COMPROMISE' ? (
+        <>
+          <p className="text-sm text-muted-foreground">{t('injectEditor.c2Help')}</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Select
+              label={t('injectEditor.c2Target')}
+              value={f.c2TargetId}
+              options={unitOptions(blue)}
+              onChange={(v) => set('c2TargetId', v)}
+            />
+            <Field
+              label={t('injectEditor.drift')}
+              type="number"
+              value={f.drift}
+              onChange={(v) => set('drift', v)}
+            />
+            <Field
+              label={t('injectEditor.duration')}
+              type="number"
+              value={f.duration}
+              onChange={(v) => set('duration', v)}
+            />
+          </div>
+        </>
       ) : null}
 
       {issues.length > 0 ? (

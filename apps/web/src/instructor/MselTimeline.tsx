@@ -18,6 +18,8 @@ const COLOURS: Record<InjectType, string> = {
   RUNNER_DISPATCH: '#22c55e',
   WEATHER_CHANGE: '#0ea5e9',
   ADVERSARY_MOVE: '#ec4899',
+  GPS_SPOOF: '#0d9488',
+  C2_COMPROMISE: '#4f46e5',
 };
 const LANES = 3;
 

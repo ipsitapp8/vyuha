@@ -1,10 +1,13 @@
 import { effectiveJamming, zeroLevels, zeroUsage } from './ew';
+import { offsetByBearing, offsetByMeters } from './geometry';
 import { mulberry32 } from './prng';
 import type { TerrainGridData } from './terrain';
 import { isValidGrid } from './terrain';
 import type {
   Channel,
   EngineUnit,
+  FriendlyFix,
+  LatLon,
   PlayerKnowledge,
   PlayerSpec,
   Roster,
@@ -138,4 +141,43 @@ export function currentJamming(state: TruthState): Record<Channel, number> {
 
 export function satcomUp(state: TruthState): boolean {
   return state.tick >= state.satcomDownUntilTick;
+}
+
+/** How far a compromised C2 node can push a teammate's marker (m). */
+export const C2_MAX_DRIFT_M = 4000;
+
+/** The position a unit reports for itself: the truth, unless its navigation is being spoofed. */
+export function reportedPosition(state: TruthState, unit: EngineUnit): LatLon {
+  const spoof = state.gpsSpoofs.find((g) => g.unitId === unit.id && state.tick < g.untilTick);
+  return spoof ? offsetByMeters(unit.position, spoof.eastM, spoof.northM) : { ...unit.position };
+}
+
+export function gpsSpoofOf(
+  state: TruthState,
+  unitId: string,
+): TruthState['gpsSpoofs'][number] | null {
+  return state.gpsSpoofs.find((g) => g.unitId === unitId && state.tick < g.untilTick) ?? null;
+}
+
+/** How far (m) a compromised C2 node has pushed this player's teammate markers by now. */
+export function c2DriftM(state: TruthState, playerId: string): number {
+  const c = state.c2Compromises.find((x) => x.playerId === playerId);
+  if (!c) return 0;
+  return Math.min(C2_MAX_DRIFT_M, c.driftMps * Math.max(0, state.tick - c.sinceTick));
+}
+
+/**
+ * Where a player believes a teammate is: the last fix they received, pushed off by a compromised C2
+ * node when there is one. The stored fix itself stays honest, so the drift ends the moment it is caught.
+ */
+export function believedFriendlyPosition(
+  state: TruthState,
+  playerId: string,
+  unitId: string,
+  fix: FriendlyFix,
+): LatLon {
+  const c = state.c2Compromises.find((x) => x.playerId === playerId);
+  const bearing = c?.bearings[unitId];
+  if (!c || bearing === undefined) return { ...fix.position };
+  return offsetByBearing(fix.position, bearing, c2DriftM(state, playerId));
 }

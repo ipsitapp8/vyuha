@@ -1,6 +1,6 @@
 import { CONTACT_TTL_TICKS } from './config';
 import { haversineM } from './geometry';
-import { getPlayer, getUnit } from './state';
+import { believedFriendlyPosition, getPlayer, getUnit } from './state';
 import type { DecisionRecord, EngineEvent, PictureDrift, TruthState } from './types';
 
 const mean = (xs: readonly number[]): number =>
@@ -39,7 +39,9 @@ export function computePictureDrift(truth: TruthState, playerId: string): Pictur
 
   const friendlyErrs = Object.entries(knowledge.friendlies).flatMap(([unitId, fix]) => {
     const u = getUnit(truth, unitId);
-    return u ? [haversineM(fix.position, u.position)] : [];
+    return u
+      ? [haversineM(believedFriendlyPosition(truth, playerId, unitId, fix), u.position)]
+      : [];
   });
 
   return {

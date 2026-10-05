@@ -54,6 +54,8 @@ const truth = (units: TruthViewDto['units']): TruthViewDto => ({
   satcomUp: true,
   weather: { visibilityM: 1, precipitationMm: 0, windKph: 0 },
   manualJamming: { VHF: 0, HF: 0, SATCOM: 0, DATALINK: 0, RUNNER: 0 },
+  probe: null,
+  effects: { gpsSpoofs: [], c2Compromises: [] },
   msel: [],
   players: {},
   drift: {},

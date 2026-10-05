@@ -13,6 +13,7 @@ import {
   type Rng,
   type Roster,
   type TruthState,
+  c2DriftM,
 } from '@vyuha/engine';
 import {
   SOCKET_EVENTS,
@@ -240,6 +241,21 @@ export function buildTruthView(state: TruthState, metrics: LiveMetrics): TruthVi
     weather: state.weather,
     manualJamming: state.manualJam,
     msel: state.msel.map((inject) => ({ inject, fired: state.firedInjectIds.includes(inject.id) })),
+    probe: openProbeView(state),
+    effects: {
+      gpsSpoofs: state.gpsSpoofs.map((g) => ({
+        unitId: g.unitId,
+        offsetM: Math.round(Math.hypot(g.eastM, g.northM)),
+        untilTick: g.untilTick,
+      })),
+      c2Compromises: state.c2Compromises.map((c) => ({
+        playerId: c.playerId,
+        sinceTick: c.sinceTick,
+        untilTick: c.untilTick,
+        channel: c.channel,
+        driftM: Math.round(c2DriftM(state, c.playerId)),
+      })),
+    },
     players: metrics.view(state.players.map((p) => p.id)),
     drift: Object.fromEntries(state.players.map((p) => [p.id, computePictureDrift(state, p.id)])),
   };

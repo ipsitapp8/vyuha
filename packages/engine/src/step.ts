@@ -14,10 +14,11 @@ import {
   SWITCH_PENALTY_TICKS,
 } from './config';
 import { adaptJamming, zeroUsage } from './ew';
-import { bearingDeg, clamp, haversineM, stepToward } from './geometry';
+import { bearingDeg, clamp, haversineM, offsetByMeters, stepToward } from './geometry';
 import { computePictureDrift } from './metrics';
 import { computePerceivedState } from './perceived';
-import type { Rng } from './prng';
+import { createProbe, scoreProbe } from './probe';
+import { randRange, type Rng } from './prng';
 import { corruptPosition, corruptText, deliverMessage, elevationAt } from './radio';
 import { isSensor, makeConflictingPair, senseTick } from './reports';
 import {
@@ -27,7 +28,9 @@ import {
   getPlayer,
   getTeam,
   getUnit,
+  gpsSpoofOf,
   recipientsForUnit,
+  reportedPosition,
   satcomUp,
 } from './state';
 import type {
@@ -209,6 +212,71 @@ function applyInject(ctx: Ctx, inject: Inject, source: 'MSEL' | 'LIVE'): void {
           [INSTRUCTOR],
         );
       }
+      return;
+    }
+    case 'GPS_SPOOF': {
+      const uav = getUnit(s, inject.unitId);
+      if (!uav) return fail('unknown unit');
+      if (uav.side !== 'BLUE' || uav.domain !== 'AIR') return fail('not a friendly air unit');
+      const rad = (inject.bearingDeg * Math.PI) / 180;
+      s.gpsSpoofs = s.gpsSpoofs.filter((g) => g.unitId !== uav.id);
+      s.gpsSpoofs.push({
+        injectId: inject.id,
+        unitId: uav.id,
+        eastM: inject.offsetM * Math.sin(rad),
+        northM: inject.offsetM * Math.cos(rad),
+        untilTick: s.tick + inject.durationTicks,
+      });
+      // Truth only: nobody on the team is told that the UAV's navigation is off.
+      emit(
+        ctx,
+        'GPS_SPOOF_STARTED',
+        {
+          injectId: inject.id,
+          unitId: uav.id,
+          offsetM: inject.offsetM,
+          bearingDeg: inject.bearingDeg,
+          untilTick: s.tick + inject.durationTicks,
+        },
+        [INSTRUCTOR],
+      );
+      return;
+    }
+    case 'C2_COMPROMISE': {
+      const target = getUnit(s, inject.targetUnitId);
+      if (!target) return fail('unknown unit');
+      const victim = s.players.find((p) => p.unitId === target.id);
+      const team = victim ? getTeam(s, victim.teamId) : undefined;
+      if (!victim || !team) return fail('no trainee is on that unit');
+      const k = s.knowledge[victim.id];
+      const mates = Object.keys(k?.friendlies ?? {}).sort();
+      if (mates.length === 0) return fail('that trainee has no teammates to track');
+      const bearings: Record<string, number> = {};
+      for (const unitId of mates) bearings[unitId] = Math.round(randRange(ctx.rng, 0, 360));
+      s.c2Compromises = s.c2Compromises.filter((c) => c.playerId !== victim.id);
+      s.c2Compromises.push({
+        injectId: inject.id,
+        playerId: victim.id,
+        sinceTick: s.tick,
+        untilTick: s.tick + inject.durationTicks,
+        channel: team.activeChannel,
+        driftMps: inject.driftMps,
+        bearings,
+      });
+      // Truth only: the victim sees no alert, just teammates that slowly slide out of place.
+      emit(
+        ctx,
+        'C2_COMPROMISED',
+        {
+          injectId: inject.id,
+          playerId: victim.id,
+          unitId: target.id,
+          channel: team.activeChannel,
+          driftMps: inject.driftMps,
+          untilTick: s.tick + inject.durationTicks,
+        },
+        [INSTRUCTOR],
+      );
       return;
     }
     case 'RUNNER_DISPATCH': {
@@ -411,6 +479,33 @@ function addInbox(ctx: Ctx, playerId: string, m: Message): void {
     },
     [playerId, INSTRUCTOR],
   );
+  crossCheckC2(ctx, playerId, m);
+}
+
+/**
+ * A compromised C2 node is caught when its victim hears from a teammate over anything but the net the
+ * node sits on: another radio channel, or a runner. From then on the picture is honest again.
+ */
+function crossCheckC2(ctx: Ctx, playerId: string, m: Message): void {
+  const { s } = ctx;
+  const c = s.c2Compromises.find((x) => x.playerId === playerId);
+  if (!c || m.spoof || !m.fromUnitId || m.channel === c.channel) return;
+  const me = getPlayer(s, playerId);
+  const sender = s.players.find((p) => p.unitId === m.fromUnitId);
+  if (!me || !sender || sender.id === me.id || sender.teamId !== me.teamId) return;
+  s.c2Compromises = s.c2Compromises.filter((x) => x !== c);
+  emit(
+    ctx,
+    'C2_COMPROMISE_DETECTED',
+    {
+      injectId: c.injectId,
+      playerId,
+      via: m.channel,
+      sinceTick: c.sinceTick,
+      afterTicks: s.tick - c.sinceTick,
+    },
+    [playerId, INSTRUCTOR],
+  );
 }
 
 function giveReport(ctx: Ctx, playerId: string, d: DeliveredReport): void {
@@ -462,6 +557,7 @@ function deliverDue(ctx: Ctx): void {
           receivedTick: s.tick,
         };
       }
+      crossCheckC2(ctx, m.toPlayerId, m);
     } else {
       addInbox(ctx, m.toPlayerId, m);
     }
@@ -472,6 +568,12 @@ function deliverDue(ctx: Ctx): void {
 
 function registerReport(ctx: Ctx, report: Report): void {
   const { s } = ctx;
+  // A UAV with spoofed navigation georeferences everything it sees with the same wrong offset.
+  const spoof = gpsSpoofOf(s, report.sensorUnitId);
+  if (spoof) {
+    report.position = offsetByMeters(report.position, spoof.eastM, spoof.northM);
+    report.gpsSpoofed = true;
+  }
   s.reports.push(report);
   emit(
     ctx,
@@ -486,6 +588,7 @@ function registerReport(ctx: Ctx, report: Report): void {
       conflictGroup: report.conflictGroup,
       position: report.position,
       type: report.type,
+      gpsSpoofed: report.gpsSpoofed,
     },
     [INSTRUCTOR],
   );
@@ -549,7 +652,7 @@ function sendBeacons(ctx: Ctx): void {
         team,
         channel: team.activeChannel,
         text: 'Position beacon',
-        position: { ...unit.position },
+        position: reportedPosition(s, unit),
         reportId: null,
         subjectUnitId: unit.id,
       });
@@ -661,6 +764,92 @@ function prune(ctx: Ctx): void {
     k.reports = k.reports.filter((r) => s.tick - r.observedTick <= STATE_PRUNE_TICKS);
   }
   s.jamWindows = s.jamWindows.filter((w) => w.untilTick > s.tick);
+
+  for (const g of s.gpsSpoofs.filter((x) => x.untilTick <= s.tick)) {
+    emit(ctx, 'GPS_SPOOF_ENDED', { injectId: g.injectId, unitId: g.unitId }, [INSTRUCTOR]);
+  }
+  s.gpsSpoofs = s.gpsSpoofs.filter((x) => x.untilTick > s.tick);
+  for (const c of s.c2Compromises.filter((x) => x.untilTick <= s.tick)) {
+    // ran its course without the trainee ever cross-checking
+    emit(
+      ctx,
+      'C2_COMPROMISE_ENDED',
+      { injectId: c.injectId, playerId: c.playerId, afterTicks: s.tick - c.sinceTick },
+      [INSTRUCTOR],
+    );
+  }
+  s.c2Compromises = s.c2Compromises.filter((x) => x.untilTick > s.tick);
+}
+
+// ---- Situation-awareness probes (SAGAT) ---------------------------------------------------
+
+/** Closes probes whose answer window is over (unanswered = 0) and opens the one requested this tick. */
+function runProbes(ctx: Ctx): void {
+  const { s } = ctx;
+  const closing = s.probes.filter(
+    (p) => ctx.closeProbes || ctx.probeToStart !== null || s.tick >= p.expiresAtTick,
+  );
+  for (const probe of closing) {
+    for (const playerId of probe.pending) {
+      const player = getPlayer(s, playerId);
+      if (!player) continue;
+      const score = scoreProbe(probe, playerId, teamPlayerIds(s, player.teamId), null);
+      emit(ctx, 'PROBE_SCORED', { ...score }, [INSTRUCTOR]);
+    }
+    emit(ctx, 'PROBE_CLOSED', { probeId: probe.id }, [...allPlayerIds(s), INSTRUCTOR]);
+  }
+  s.probes = s.probes.filter((p) => !closing.includes(p));
+
+  if (ctx.probeToStart === null) return;
+  const probe = createProbe(s, ctx.probeToStart);
+  s.probes.push(probe);
+  // Trainees learn only that a probe is open; the frozen truth goes to the instructor alone.
+  emit(ctx, 'PROBE_STARTED', { probeId: probe.id, expiresAtTick: probe.expiresAtTick }, [
+    ...allPlayerIds(s),
+    INSTRUCTOR,
+  ]);
+  emit(
+    ctx,
+    'PROBE_TRUTH',
+    {
+      probeId: probe.id,
+      hostiles: probe.hostiles,
+      friendlies: probe.friendlies,
+      jammedChannel: probe.jammedChannel,
+    },
+    [INSTRUCTOR],
+  );
+}
+
+function answerProbe(ctx: Ctx, input: Extract<EngineInput, { type: 'PROBE_ANSWER' }>): void {
+  const { s } = ctx;
+  const player = getPlayer(s, input.playerId);
+  if (!player) return reject(ctx, null, input.type, 'unknown player');
+  const probe = s.probes.find((p) => p.id === input.probeId);
+  if (!probe) return reject(ctx, player.id, input.type, 'that probe is closed');
+  if (!probe.pending.includes(player.id))
+    return reject(ctx, player.id, input.type, 'you have already answered this probe');
+  const valid = (p: { lat: number; lon: number }): boolean =>
+    Number.isFinite(p.lat) &&
+    Number.isFinite(p.lon) &&
+    Math.abs(p.lat) <= 90 &&
+    Math.abs(p.lon) <= 180;
+  if (!input.contacts.every(valid) || !input.teammates.every((t) => valid(t.position)))
+    return reject(ctx, player.id, input.type, 'invalid position');
+
+  probe.pending = probe.pending.filter((id) => id !== player.id);
+  const score = scoreProbe(probe, player.id, teamPlayerIds(s, player.teamId), {
+    contacts: input.contacts,
+    teammates: input.teammates,
+    jammedChannel: input.jammedChannel,
+  });
+  // The trainee is told only that the answer was taken; the score waits for the review.
+  emit(ctx, 'PROBE_ANSWERED', { playerId: player.id, probeId: probe.id }, [player.id, INSTRUCTOR]);
+  emit(ctx, 'PROBE_SCORED', { ...score }, [INSTRUCTOR]);
+  if (probe.pending.length === 0) {
+    s.probes = s.probes.filter((p) => p !== probe);
+    emit(ctx, 'PROBE_CLOSED', { probeId: probe.id }, [...allPlayerIds(s), INSTRUCTOR]);
+  }
 }
 
 // ---- Player / instructor inputs ---------------------------------------------------------
@@ -910,6 +1099,8 @@ function applyDecision(
   const latencyTicks = arrivals.length ? s.tick - Math.min(...arrivals) : null;
 
   let outcome: 0 | 1 | null = null;
+  // Engaging or reporting up a contact that came from a UAV with spoofed navigation.
+  let spoofedUavReportId: string | null = null;
   if (order && (input.actionType === 'COMPLY_ORDER' || input.actionType === 'IGNORE_ORDER')) {
     const comply = input.actionType === 'COMPLY_ORDER';
     outcome = comply === !order.spoof ? 1 : 0;
@@ -918,6 +1109,7 @@ function applyDecision(
     const subject = report?.subjectUnitId ? getUnit(s, report.subjectUnitId) : undefined;
     const real = !!report && !report.ghost && !!subject && subject.side === 'RED';
     outcome = real && haversineM(contact.position, subject.position) <= 500 ? 1 : 0;
+    spoofedUavReportId = report?.gpsSpoofed ? report.id : null;
   }
 
   // Acting on a forged order counts whether it was never challenged or the challenge already showed it
@@ -961,6 +1153,11 @@ function applyDecision(
     { playerId: player.id, actionType: input.actionType, confidence: Math.round(input.confidence) },
     [player.id],
   );
+  if (spoofedUavReportId) {
+    emit(ctx, 'SPOOFED_UAV_ACTED', { playerId: player.id, reportId: spoofedUavReportId }, [
+      INSTRUCTOR,
+    ]);
+  }
   if (spoofActed) {
     emit(
       ctx,

@@ -8,6 +8,7 @@ import {
   type LobbyView,
   type Speed,
   type TruthEventDto,
+  type TruthViewDto,
 } from '@vyuha/shared';
 import { CockpitMap } from '@/cockpit/CockpitMap';
 import { Link } from 'react-router-dom';
@@ -25,12 +26,17 @@ import { TraineeCards } from './TraineeCards';
 import { TruthMap } from './TruthMap';
 
 const SPEEDS = speedSchema.options.map((o) => o.value);
-const QUICK: { type: InjectType; label: 'jam' | 'satcom' | 'spoof' | 'conflict' | 'weather' }[] = [
+const QUICK: {
+  type: InjectType;
+  label: 'jam' | 'satcom' | 'spoof' | 'conflict' | 'weather' | 'gps' | 'c2';
+}[] = [
   { type: 'JAM_CHANNEL', label: 'jam' },
   { type: 'SATCOM_OUTAGE', label: 'satcom' },
   { type: 'SPOOF_ORDER', label: 'spoof' },
   { type: 'CONFLICTING_REPORTS', label: 'conflict' },
   { type: 'WEATHER_CHANGE', label: 'weather' },
+  { type: 'GPS_SPOOF', label: 'gps' },
+  { type: 'C2_COMPROMISE', label: 'c2' },
 ];
 
 type RunFn = (fn: () => Promise<LobbyView>) => Promise<void>;
@@ -78,7 +84,12 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
     );
   }
 
-  const units: UnitRef[] = truth.units.map((u) => ({ id: u.id, name: u.name, side: u.side }));
+  const units: UnitRef[] = truth.units.map((u) => ({
+    id: u.id,
+    name: u.name,
+    side: u.side,
+    domain: u.domain,
+  }));
   const b = lobby.session.areaBounds;
   const anchor = { lat: (b.south + b.north) / 2, lon: (b.west + b.east) / 2 };
   const watched = live.perceived && live.perceived.playerId === watchedId ? live.perceived : null;
@@ -143,6 +154,50 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
             )}
           </div>
         </figure>
+        <div className="lg:col-span-2">
+          <Button
+            variant="outline"
+            aria-pressed={terrain3d}
+            onClick={() => {
+              saveTerrain3dPref(!terrain3d);
+              setTerrain3d(!terrain3d);
+            }}
+          >
+            <Mountain className="mr-1 h-4 w-4" aria-hidden="true" />
+            {t('map.terrain3d')}
+          </Button>
+        </div>
+        {truth.effects.gpsSpoofs.length + truth.effects.c2Compromises.length > 0 ? (
+          <ul
+            aria-label={t('god.effects.title')}
+            className="flex flex-wrap gap-2 text-sm lg:col-span-2"
+          >
+            {truth.effects.gpsSpoofs.map((g) => (
+              <li
+                key={`gps-${g.unitId}`}
+                className="rounded-md bg-amber-100 px-2 py-1 text-amber-900"
+              >
+                {t('god.effects.gps', {
+                  unit: truth.units.find((u) => u.id === g.unitId)?.name ?? g.unitId,
+                  offset: g.offsetM,
+                  until: clock(g.untilTick),
+                })}
+              </li>
+            ))}
+            {truth.effects.c2Compromises.map((c) => (
+              <li
+                key={`c2-${c.playerId}`}
+                className="rounded-md bg-amber-100 px-2 py-1 text-amber-900"
+              >
+                {t('god.effects.c2', {
+                  name: lobby.players.find((p) => p.id === c.playerId)?.name ?? c.playerId,
+                  drift: c.driftM,
+                  channel: t(`channels.${c.channel}`),
+                })}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <p className="text-xs text-muted-foreground lg:col-span-2">
           {watched ? t('god.maps.legend', { name: watchedName }) : null}{' '}
           {tilesOffline ? t('god.maps.tilesOffline') : null}
@@ -302,6 +357,14 @@ const FEED_TYPES = [
   'DECISION_MADE',
   'INPUT_REJECTED',
   'MSEL_CHANGED',
+  'GPS_SPOOF_STARTED',
+  'GPS_SPOOF_ENDED',
+  'C2_COMPROMISED',
+  'C2_COMPROMISE_DETECTED',
+  'C2_COMPROMISE_ENDED',
+  'SPOOFED_UAV_ACTED',
+  'PROBE_STARTED',
+  'PROBE_SCORED',
 ];
 
 function summarise(t: TFunction, e: TruthEventDto): string {
@@ -330,6 +393,28 @@ function summarise(t: TFunction, e: TruthEventDto): string {
       });
     case 'INPUT_REJECTED':
       return t('god.events.rejected', { reason: String(p['reason']) });
+    case 'GPS_SPOOF_STARTED':
+      return t('god.events.gpsStarted', {
+        unit: String(p['unitId']),
+        offset: Math.round(Number(p['offsetM'])),
+      });
+    case 'GPS_SPOOF_ENDED':
+      return t('god.events.gpsEnded', { unit: String(p['unitId']) });
+    case 'C2_COMPROMISED':
+      return t('god.events.c2Started', { unit: String(p['unitId']) });
+    case 'C2_COMPROMISE_DETECTED':
+      return t('god.events.c2Detected', {
+        seconds: Number(p['afterTicks']),
+        channel: String(p['via']),
+      });
+    case 'C2_COMPROMISE_ENDED':
+      return t('god.events.c2Ended', { seconds: Number(p['afterTicks']) });
+    case 'SPOOFED_UAV_ACTED':
+      return t('god.events.uavActed', { contact: String(p['reportId']) });
+    case 'PROBE_STARTED':
+      return t('god.events.probeStarted');
+    case 'PROBE_SCORED':
+      return t('god.events.probeScored', { score: Math.round(Number(p['score'])) });
     default:
       return t('god.events.msel', { change: String(p['change']) });
   }

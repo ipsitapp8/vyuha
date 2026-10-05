@@ -144,4 +144,43 @@ describe('validateMselReferences', () => {
       ),
     ).toEqual([]);
   });
+
+  it('checks the air and cyber injects: the UAV must be a friendly air unit, the C2 target friendly', () => {
+    const withDomains = [
+      { id: 'b-uav', side: 'BLUE' as const, domain: 'AIR' as const },
+      { id: 'b-pl', side: 'BLUE' as const, domain: 'LAND' as const },
+      { id: 'r-uav', side: 'RED' as const, domain: 'AIR' as const },
+    ];
+    const gps = (unitId: string) => ({
+      ...base,
+      id: `g-${unitId}`,
+      type: 'GPS_SPOOF' as const,
+      unitId,
+      offsetM: 1500,
+      bearingDeg: 45,
+      durationTicks: 120,
+    });
+    const c2 = (targetUnitId: string) => ({
+      ...base,
+      id: `c-${targetUnitId}`,
+      type: 'C2_COMPROMISE' as const,
+      targetUnitId,
+      driftMps: 5,
+      durationTicks: 300,
+    });
+    expect(validateMselReferences([gps('b-uav'), c2('b-pl')], withDomains, bounds)).toEqual([]);
+    const problems = validateMselReferences(
+      [gps('b-pl'), gps('r-uav'), gps('nope'), c2('r-uav')],
+      withDomains,
+      bounds,
+    );
+    expect(problems).toHaveLength(4);
+    expect(problems.join(' ')).toMatch(/not an air unit/);
+    // shapes: offset, bearing and drift have sensible limits
+    expect(injectSchema.safeParse({ ...gps('b-uav'), offsetM: 5 }).success).toBe(false);
+    expect(injectSchema.safeParse({ ...gps('b-uav'), bearingDeg: 360 }).success).toBe(false);
+    expect(injectSchema.safeParse({ ...c2('b-pl'), driftMps: 0 }).success).toBe(false);
+    expect(injectSchema.safeParse(gps('b-uav')).success).toBe(true);
+    expect(injectSchema.safeParse(c2('b-pl')).success).toBe(true);
+  });
 });

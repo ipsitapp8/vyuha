@@ -407,6 +407,30 @@ export const truthViewSchema = z.object({
     RUNNER: z.number(),
   }),
   msel: z.array(z.object({ inject: injectSchema, fired: z.boolean() })),
+  /** Air and cyber effects in force right now (instructor only; trainees are never told). */
+  effects: z.object({
+    gpsSpoofs: z.array(
+      z.object({ unitId: z.string(), offsetM: z.number(), untilTick: z.number().int() }),
+    ),
+    c2Compromises: z.array(
+      z.object({
+        playerId: z.string(),
+        sinceTick: z.number().int(),
+        untilTick: z.number().int(),
+        channel: channelSchema,
+        driftM: z.number(),
+      }),
+    ),
+  }),
+  /** The open situation-awareness probe, with the trainees who have still to answer. */
+  probe: z
+    .object({
+      id: z.string(),
+      tick: z.number().int(),
+      expiresAtTick: z.number().int(),
+      pending: z.array(z.string()),
+    })
+    .nullable(),
   players: z.record(z.string(), playerMetricsViewSchema),
   drift: z.record(
     z.string(),

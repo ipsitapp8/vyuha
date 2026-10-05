@@ -248,6 +248,10 @@ export function describeTimeline(
       return `${nameOf(item.playerId)} decided ${String(p['action'])} at ${String(p['confidence'])}% (${String(p['outcome'])})`;
     case 'JAMMING':
       return `Jamming changed: heaviest on ${String(p['channel'])} at ${String(p['level'])}%`;
+    case 'C2_DETECTED':
+      return `${nameOf(item.playerId)} detected the C2 compromise after ${String(p['seconds'])} s, over ${String(p['via'])}`;
+    case 'UAV_SPOOF_ACTED':
+      return `${nameOf(item.playerId)} acted on spoofed UAV data (contact ${String(p['contact'])})`;
   }
 }
 

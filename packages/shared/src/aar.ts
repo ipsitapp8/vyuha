@@ -140,7 +140,16 @@ export type LearningPointDto = z.infer<typeof learningPointSchema>;
 
 export const timelineItemSchema = z.object({
   tick: z.number().int(),
-  kind: z.enum(['INJECT', 'SPOOF', 'AUTH', 'CHANNEL_SWITCH', 'DECISION', 'JAMMING']),
+  kind: z.enum([
+    'INJECT',
+    'SPOOF',
+    'AUTH',
+    'CHANNEL_SWITCH',
+    'DECISION',
+    'JAMMING',
+    'C2_DETECTED',
+    'UAV_SPOOF_ACTED',
+  ]),
   playerId: z.string().nullable(),
   params: z.record(z.string(), z.union([z.string(), z.number()])),
 });
@@ -297,6 +306,18 @@ export const LEARNING_TEXT_EN: Record<string, string> = {
   NEVER_GRADED: 'Received {{contacts}} contact reports and never graded one.',
   HIGH_DRIFT:
     'The picture was far from reality: on average {{errorM}} m of position error and {{missed}} hostile unit(s) missed.',
+  ACTED_ON_SPOOFED_UAV:
+    'Acted on spoofed UAV data: engaged or reported up {{count}} contact(s) placed by a UAV whose navigation was being spoofed.',
+  GPS_SPOOF_SUSPECTED:
+    'Graded {{count}} report(s) from the spoofed UAV as unreliable: the bad positions were noticed.',
+  C2_DETECTED:
+    'Detected the C2 compromise at {{time}} (tick {{tick}}), {{seconds}} s after it began, by cross-checking over {{via}}.',
+  C2_NOT_DETECTED:
+    'Never detected the C2 compromise: teammate positions were wrong for {{seconds}} s with no cross-check over another channel or a runner.',
+  LOW_SA:
+    'Situation awareness was low: {{score}} out of 100 on average over {{probes}} freeze probe(s).',
+  GOOD_SA:
+    'Situation awareness was strong: {{score}} out of 100 on average over {{probes}} freeze probe(s).',
   NO_SWITCH_WHILE_JAMMED:
     'Team {{team}} did not switch away from heavily jammed {{channel}} for {{seconds}} s.',
   SLOW_SWITCH: 'Team {{team}} took {{seconds}} s to leave jammed {{channel}}.',

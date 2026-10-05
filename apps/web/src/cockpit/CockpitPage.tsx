@@ -34,6 +34,7 @@ const NOTICE_TYPES = [
   'UNIT_ARRIVED',
   'ISR_REQUESTED',
   'UNIT_MOVE_ORDERED',
+  'C2_COMPROMISE_DETECTED',
 ] as const;
 
 function noticeText(t: TFunction, e: EventDto): string {
@@ -56,6 +57,8 @@ function noticeText(t: TFunction, e: EventDto): string {
       return t('cockpit.notices.arrived');
     case 'ISR_REQUESTED':
       return t('cockpit.notices.isr');
+    case 'C2_COMPROMISE_DETECTED':
+      return t('cockpit.notices.c2Detected');
     default:
       return t('cockpit.notices.moveOrdered');
   }
