@@ -866,5 +866,22 @@
       "data": "Maps: OpenStreetMap contributors (ODbL). Terrain and weather: Copernicus GLO-90 via Open-Meteo. Scenario events are synthetic; no classified data is used.",
       "notice": "This is a prototype built for the Smart India Hackathon 2026. It is not an official government website."
     }
+  },
+  "map": {
+    "terrain3d": "3D terrain"
+  },
+  "scenarios": {
+    "silentRidge": {
+      "title": "Op Silent Ridge",
+      "description": "A blue platoon holds the Indus valley approaches to Leh while a hostile force probes from the northern ridgelines. Ridge-masked VHF, reliance-adaptive jamming, a SATCOM cyber outage and spoofed HQ orders force the team to reconcile conflicting pictures and fall back on PACE alternatives."
+    },
+    "himPrahari": {
+      "title": "Op Him Prahari",
+      "description": "A platoon holds the Nubra side of a 5,300 m pass while Battalion HQ sits on the Leh side. The ridge blocks VHF line of sight almost everywhere, so the team lives on HF and SATCOM, and then a planned SATCOM outage, HF jamming, a whiteout and a compromised C2 node take those away one by one."
+    },
+    "tharKavach": {
+      "title": "Op Thar Kavach",
+      "description": "A platoon screens open desert where line of sight runs for kilometres and VHF reaches everyone, until the adversary jams it hard. The team must move down its PACE plan while its own UAV, its best eyes on the flats, has its navigation spoofed and quietly reports every contact 2.5 km from where it really is."
+    }
   }
 }

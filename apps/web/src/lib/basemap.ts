@@ -1,6 +1,6 @@
 import { addProtocol, type Map as MapLibreMap, type StyleSpecification } from 'maplibre-gl';
 import { layers, namedFlavor } from '@protomaps/basemaps';
-import { Protocol } from 'pmtiles';
+import { PMTiles, Protocol } from 'pmtiles';
 import type { AreaBounds, TerrainGridDto } from '@vyuha/shared';
 import { api } from './api';
 import { shadeTerrain } from './terrainShade';
@@ -92,6 +92,26 @@ export function pmtilesAvailable(): Promise<boolean> {
   return available;
 }
 
+/** True when the tile archive holds the whole exercise area (its tiles stop at the archive's edge). */
+export function archiveCovers(archive: AreaBounds, area: AreaBounds): boolean {
+  return (
+    area.south >= archive.south &&
+    area.north <= archive.north &&
+    area.west >= archive.west &&
+    area.east <= archive.east
+  );
+}
+
+let archiveBounds: Promise<AreaBounds | null> | null = null;
+/** The area the bundled PMTiles archive covers, read from its header; null when it cannot be read. */
+export function pmtilesBounds(): Promise<AreaBounds | null> {
+  archiveBounds ??= new PMTiles(local(PMTILES_PATH))
+    .getHeader()
+    .then((h) => ({ south: h.minLat, west: h.minLon, north: h.maxLat, east: h.maxLon }))
+    .catch(() => null);
+  return archiveBounds;
+}
+
 /** Base map of last resort: hillshade, elevation tint and contours from the stored terrain grid. */
 export function terrainStyle(grid: TerrainGridDto, bounds: AreaBounds): StyleSpecification {
   const shaded = shadeTerrain(grid, bounds);
@@ -162,7 +182,12 @@ export function attachBasemap(map: MapLibreMap, opts: BasemapOptions): () => voi
 
   const start = async (): Promise<void> => {
     if (MAP_MODE === 'offline') {
-      if (await pmtilesAvailable()) {
+      // The archive is cut to one area. A scenario somewhere else (the desert one) would get an empty
+      // street map from it, so it takes the terrain base map instead: never a blank map.
+      const covered =
+        (await pmtilesAvailable()) &&
+        archiveCovers((await pmtilesBounds()) ?? opts.bounds, opts.bounds);
+      if (covered) {
         if (stopped) return;
         registerPmtiles();
         map.setStyle(offlineStyle());

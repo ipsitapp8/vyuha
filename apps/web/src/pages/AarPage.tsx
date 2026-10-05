@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { scenarioTitle } from '@/lib/scenarioText';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AarSummary } from '@vyuha/shared';
@@ -85,7 +86,7 @@ function Review({ summary }: { summary: AarSummary }) {
           <h1 className="text-2xl font-semibold">{t('aar.title')}</h1>
           <p className="text-sm text-muted-foreground">
             {t('aar.meta', {
-              scenario: meta.scenarioTitle,
+              scenario: scenarioTitle(t, meta.scenarioTitle),
               code: meta.code,
               duration: clock(meta.durationTicks),
               count: meta.players.length,

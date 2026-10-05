@@ -26,7 +26,8 @@ test('instructor creates a session, adds and deletes teams and saves a PACE plan
   });
 
   await signInAsInstructor(page);
-  await page.getByRole('button', { name: 'Create exercise session' }).click();
+  // one button per scenario: the first card is Op Silent Ridge
+  await page.getByRole('button', { name: 'Create exercise session' }).first().click();
   await page.waitForURL(/\/instructor\/sessions\//);
   await expect(page.getByText('Teams and PACE plans')).toBeVisible();
 

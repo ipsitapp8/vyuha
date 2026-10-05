@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { scenarioTitle } from '@/lib/scenarioText';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -91,7 +92,7 @@ export function CockpitPage() {
           {t('cockpit.backHome')}
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">
-          {live.lobby?.session.scenarioTitle ?? t('cockpit.title')}
+          {live.lobby ? scenarioTitle(t, live.lobby.session.scenarioTitle) : t('cockpit.title')}
         </h1>
         <p className="text-sm text-muted-foreground">
           {t('cockpit.code')} <span className="font-mono">{code.toUpperCase()}</span> ·{' '}
@@ -219,7 +220,7 @@ function Cockpit({
           </span>
         </p>
         <p className="text-muted-foreground">
-          {lobby.session.scenarioTitle} · {t('cockpit.code')}{' '}
+          {scenarioTitle(t, lobby.session.scenarioTitle)} · {t('cockpit.code')}{' '}
           <span className="font-mono">{lobby.session.code}</span> ·{' '}
           {t(`cockpit.connection.${live.connection}`)}
         </p>

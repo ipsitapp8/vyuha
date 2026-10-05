@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { scenarioDescription, scenarioTitle } from '@/lib/scenarioText';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { elevationRange } from '@vyuha/engine';
@@ -125,8 +126,10 @@ export function ScenarioPage() {
 
         {load.kind === 'ready' ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold">{load.scenario.title}</h1>
-            <p className="mb-4 text-muted-foreground">{load.scenario.description}</p>
+            <h1 className="mt-2 text-2xl font-semibold">{scenarioTitle(t, load.scenario.title)}</h1>
+            <p className="mb-4 text-muted-foreground">
+              {scenarioDescription(t, load.scenario.title, load.scenario.description)}
+            </p>
 
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <Button onClick={() => void startIngest()} disabled={running}>

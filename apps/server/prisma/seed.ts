@@ -5,7 +5,7 @@ import { loadConfig } from '../src/config';
 import { bundledGeo } from '../src/geo/bundled';
 import { ingestScenarioGeo } from '../src/geo/ingest';
 import { createOpenMeteoNetwork } from '../src/geo/openMeteo';
-import { SILENT_RIDGE_ID, silentRidge } from '../src/seed/silentRidge';
+import { SEED_SCENARIOS } from '../src/seed/scenarios';
 
 /** Demo accounts share one password. A public deployment sets SEED_PASSWORD so it is never the published one. */
 const DEMO_PASSWORD = process.env['SEED_PASSWORD'] ?? 'Vyuha@123';
@@ -45,39 +45,36 @@ async function main(): Promise<void> {
     });
   }
 
-  const data = {
-    title: silentRidge.title,
-    description: silentRidge.description,
-    areaBounds: silentRidge.areaBounds,
-    seed: silentRidge.seed,
-    msel: silentRidge.msel,
-    initialUnits: silentRidge.initialUnits,
-    paceDefaults: silentRidge.paceDefaults,
-  } satisfies Prisma.ScenarioUpdateInput;
-  await prisma.scenario.upsert({
-    where: { id: SILENT_RIDGE_ID },
-    update: data,
-    create: { id: SILENT_RIDGE_ID, createdById: instructor.id, ...data },
-  });
-
   // Real terrain + weather: try Open-Meteo once (fail fast), else use the bundled real-data copy.
   const config = loadConfig();
-  const geo = await ingestScenarioGeo(
-    SILENT_RIDGE_ID,
-    geoRepo,
-    createOpenMeteoNetwork({
-      elevationUrl: config.OPEN_METEO_ELEVATION_URL,
-      forecastUrl: config.OPEN_METEO_FORECAST_URL,
-      maxAttempts: 2,
-      rateLimitWaitMs: 5_000,
-    }),
-    bundledGeo(SILENT_RIDGE_ID),
-  );
-  console.log(`Terrain source: ${geo.terrainSource}, weather source: ${geo.weatherSource}`);
-  for (const w of geo.warnings) console.log(`  note: ${w}`);
+  const network = createOpenMeteoNetwork({
+    elevationUrl: config.OPEN_METEO_ELEVATION_URL,
+    forecastUrl: config.OPEN_METEO_FORECAST_URL,
+    maxAttempts: 2,
+    rateLimitWaitMs: 5_000,
+  });
+  for (const { id, definition } of SEED_SCENARIOS) {
+    const data = {
+      title: definition.title,
+      description: definition.description,
+      areaBounds: definition.areaBounds,
+      seed: definition.seed,
+      msel: definition.msel,
+      initialUnits: definition.initialUnits,
+      paceDefaults: definition.paceDefaults,
+    } satisfies Prisma.ScenarioUpdateInput;
+    await prisma.scenario.upsert({
+      where: { id },
+      update: data,
+      create: { id, createdById: instructor.id, ...data },
+    });
+    const geo = await ingestScenarioGeo(id, geoRepo, network, bundledGeo(id));
+    console.log(`${definition.title}: terrain ${geo.terrainSource}, weather ${geo.weatherSource}`);
+    for (const w of geo.warnings) console.log(`  note: ${w}`);
+  }
 
   console.log(
-    `Seeded 1 instructor, ${TRAINEE_NAMES.length} trainees and scenario "${silentRidge.title}".`,
+    `Seeded 1 instructor, ${TRAINEE_NAMES.length} trainees and ${SEED_SCENARIOS.length} scenarios.`,
   );
 }
 

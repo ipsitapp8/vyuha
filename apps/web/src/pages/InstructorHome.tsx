@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { scenarioDescription, scenarioTitle } from '@/lib/scenarioText';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ScenarioSummary, SessionListResponse } from '@vyuha/shared';
@@ -105,8 +106,10 @@ export function InstructorHome() {
           <ul className="grid gap-4 sm:grid-cols-2">
             {state.scenarios.map((s) => (
               <li key={s.id} className="rounded-lg border border-border bg-secondary p-4">
-                <h2 className="text-lg font-semibold">{s.title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{s.description}</p>
+                <h2 className="text-lg font-semibold">{scenarioTitle(t, s.title)}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {scenarioDescription(t, s.title, s.description)}
+                </p>
                 <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
                   <div>
                     <dt className="text-muted-foreground">{t('instructor.home.units')}</dt>

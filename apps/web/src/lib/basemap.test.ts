@@ -1,7 +1,13 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { offlineStyle, parseMapMode, requiredFontStacks, terrainStyle } from './basemap';
+import {
+  archiveCovers,
+  offlineStyle,
+  parseMapMode,
+  requiredFontStacks,
+  terrainStyle,
+} from './basemap';
 
 // vitest runs with apps/web as the working directory
 const publicDir = `${resolve('public')}/`;
@@ -12,6 +18,26 @@ describe('map mode', () => {
     expect(parseMapMode('offline')).toBe('offline');
     expect(parseMapMode('ONLINE')).toBe('offline');
     expect(parseMapMode('online')).toBe('online');
+  });
+});
+
+describe('tile archive coverage', () => {
+  // the bundled archive: Op Silent Ridge plus a 20 km margin
+  const archive = { south: 33.9, west: 77.23, north: 34.44, east: 77.92 };
+  it('covers both Ladakh scenarios and not the desert one, which takes the terrain base map', () => {
+    expect(archiveCovers(archive, { south: 34.08, west: 77.45, north: 34.26, east: 77.7 })).toBe(
+      true,
+    );
+    expect(archiveCovers(archive, { south: 34.24, west: 77.5, north: 34.42, east: 77.78 })).toBe(
+      true,
+    );
+    expect(archiveCovers(archive, { south: 27.3, west: 70.36, north: 27.48, east: 70.64 })).toBe(
+      false,
+    );
+    // an area that only partly overlaps is not covered either
+    expect(archiveCovers(archive, { south: 34.3, west: 77.8, north: 34.5, east: 78.0 })).toBe(
+      false,
+    );
   });
 });
 
