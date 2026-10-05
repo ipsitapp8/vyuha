@@ -105,8 +105,9 @@ DNS fail for all other hosts, and asserts that the map draws from the PMTiles fi
 responses, makes no external request and has no failed request; a second test removes the tile file
 and checks the hillshade fallback.
 
-Set `JWT_SECRET` before real use. The compose file ships a placeholder and the server logs a warning
-when it is still in place in production.
+`JWT_SECRET` has no default. `docker compose` stops with a message until it is set in `.env`
+(`openssl rand -hex 32`), and in production the server refuses to start when it is missing, shorter
+than 32 characters or still the placeholder from the example files.
 
 ## Testing
 
@@ -116,3 +117,11 @@ when it is still in place in production.
 | server | `pnpm --filter @vyuha/server test` | REST, sockets, replay equality, leak guard, hardening, exports             |
 | web    | `pnpm --filter @vyuha/web test`    | cockpit, God View, MSEL, AAR, i18n parity, error boundary                  |
 | e2e    | `pnpm e2e`                         | instructor and two trainees in real browsers through to the PDF export     |
+
+## Additions (SAGAT, air and cyber injects, baseline runs)
+
+- **Probes** are engine inputs (`PROBE_START`, `PROBE_ANSWER`, `PROBE_CLOSE`), so they are logged and replayed like everything else. `PROBE_START` freezes the truth of its tick inside `TruthState.probes`; scoring (`probe.ts`) compares an answer with that frozen copy. `PROBE_SCORED` and `PROBE_TRUTH` are visible to the instructor only; a trainee's `PerceivedState.probe` carries just the probe id and its times. Answers are the one action accepted while a session is paused: they wait in the input queue and are applied on the first tick after resume, or in the final tick when the exercise ends.
+- **GPS spoof and C2 compromise** live in `TruthState.gpsSpoofs` and `TruthState.c2Compromises`. The spoof shifts what the UAV reports (`reportedPosition`, and reports at `registerReport`); the compromise shifts only what one player is shown (`believedFriendlyPosition`), leaving the stored fixes honest, so the picture is correct again the moment it is caught. Neither draws extra random numbers except the per-teammate drift bearings.
+- **Baseline runs** set `TruthState.clean`. The flag is stored in `Session.degradationProfile` and in the `SESSION_STARTED` payload, so replay and the review rebuild a baseline exactly. In a clean run degrading injects are skipped (`INJECT_SKIPPED`), `currentJamming` is zero and every message is delivered after its channel latency.
+- **Radio audio and 3D terrain** are client-side. The audio plays only what `perceived:state` already carries. The terrain uses a custom MapLibre protocol (`vyuhadem://`) whose tiles are computed from `GET /scenarios/:id/terrain`.
+

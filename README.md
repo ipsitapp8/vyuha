@@ -10,7 +10,7 @@ See `CLAUDE.md` for the full plan.
 
 ## Setup
 ```bash
-cp .env.example .env
+cp .env.example .env         # then set JWT_SECRET in it: openssl rand -hex 32
 cp apps/server/.env.example apps/server/.env
 cp apps/web/.env.example apps/web/.env
 
@@ -21,10 +21,37 @@ pnpm dev                     # server :4000, web :5173
 ```
 Open http://localhost:5173 and choose **Instructor login** or **Trainee login** (demo accounts after `pnpm db:seed`: `instructor@vyuha.local` and `trainee1@vyuha.local` to `trainee3@vyuha.local`, password `Vyuha@123`). Trainees can create their own account; instructor accounts are issued by an administrator. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
 
+## Demo script for judges (5 steps, about 10 minutes)
+
+One instructor window and three trainee windows (separate browser profiles or private windows). Everything below is done from the UI.
+
+1. **Set up.** Instructor signs in, picks a scenario (Op Silent Ridge, Op Him Prahari or Op Thar Kavach) and presses **Create exercise session**. Trainees sign in and join with the 6-character code. The instructor adds a team, gives each trainee a team, role and unit, and presses **Start exercise** (then **4x**).
+2. **Show the asymmetry and the degradation.** On the God View press **Watch** on a trainee: truth on the left, that trainee's picture on the right. Fire **Compromise C2 node** on one trainee and **Spoof UAV GPS**: the instructor sees both effects, the trainees are told nothing. Turn on **3D terrain** and let the radio audio play as messages arrive (static grows as the channel degrades).
+3. **Measure what they know.** Press **Freeze & Probe**. Every trainee's picture is hidden and they mark, from memory, where the hostile contacts and their teammates are and which channel is jammed. Press **Resume**: each trainee card now shows a situation-awareness score that the trainees cannot see.
+4. **Test judgement.** At 04:00 a spoofed HQ order arrives. One trainee presses **Authenticate** and refuses it; another answers a teammate over HF, which is the cross-check that exposes the C2 compromise. Press **End exercise** and **Open after action review**: learning points, Ghost Replay, the probe map (answers drawn over the truth) and the PDF, CSV and JSON downloads.
+5. **Prove the cost of degraded comms.** On the review press **Create baseline run**: the same scenario and seed with every degradation switched off. The same trainees join the new code and play it. Its review shows **Degraded run against clean baseline**: decision timeline, latency and picture drift side by side for the same trainee.
+
+## What was added after the audit
+
+| Feature | What it does | Where |
+|---|---|---|
+| SAGAT probes | **Freeze & Probe** pauses the exercise and asks every trainee where contacts and teammates are and which channel is jammed. Answers are a validated action, logged, and scored server-side against the truth of that tick into one 0 to 100 score per trainee per probe. Trainees see their score only after the exercise. | `packages/engine/src/probe.ts`, `POST /sessions/:id/probe`, `GET /aar/:id/my-sa` |
+| Radio audio | Delivered text and orders are spoken (Hindi voice when Hindi is selected and available) over band-passed static with squelch clicks. Lower perceived quality means louder static and dropped or clipped words; a jammed channel is mostly noise. Mute and volume in the cockpit, on by default. Client-side only. | `apps/web/src/lib/radioAudio.ts` |
+| 3D terrain | A **3D terrain** toggle on the trainee and God View maps. Elevation tiles are painted in the browser from the stored 64 x 64 grid, so it works offline. | `apps/web/src/lib/terrain3d.ts` |
+| UAV GPS spoof | Inject `GPS_SPOOF`: a friendly UAV reports its own position and all its contacts with one consistent offset; nobody on the team is told. A UAV tasked with **Request ISR** reports one reliability grade better. | engine `step.ts`, inject editor |
+| C2 node compromised | Inject `C2_COMPROMISE`: one trainee's teammate markers drift slowly wrong with no alert, until that trainee hears from a teammate over a different channel or by runner. | engine `step.ts`, inject editor |
+| Three scenarios | Op Silent Ridge (Leh), **Op Him Prahari** (Khardung La: the ridge blocks VHF, PACE starts on HF and SATCOM, planned SATCOM outage) and **Op Thar Kavach** (Rajasthan desert: long line of sight, heavy VHF jamming, UAV GPS spoof). Titles and descriptions in English and Hindi; real terrain and weather bundled for offline use. | `apps/server/src/seed/` |
+| Clean baseline and comparison | **Create baseline run** on a finished review makes a twin session with no jamming, delay, dropout or spoofs. The review compares the two runs for trainees who played both. Baseline runs are not counted in progress. | `POST /sessions/:id/baseline`, `GET /aar/:id/compare` |
+| Sixth progress metric | Mean situation-awareness score per session, charted on the progress page and in the PDF. | `SessionMetric.saScore` |
+
+Fixes from the audit: actions queued when the instructor ends the exercise are applied in a final tick before `SESSION_ENDED`; complying with an order after authentication failed counts as acting on a spoof and gets its own learning point; the web container's nginx now serves pages with the right content type (it was serving every file as a download); `JWT_SECRET` has no default in Docker Compose and production refuses the placeholder.
+
 ## Full stack in Docker
 ```bash
+cp .env.example .env         # set JWT_SECRET: compose refuses to start without it
 docker compose up --build    # web :8080, server :4000, db :5432
 ```
+The stack seeds the three scenarios and the demo accounts on first start and needs no internet once the images are built. If port 5432 is already taken by a local PostgreSQL, remove the `ports` entry of the `db` service: the server reaches the database inside the compose network.
 
 ### Offline base map
 The map works with no internet by default (`MAP_MODE=offline`): the exercise-area tiles (`apps/web/public/tiles/area.pmtiles`) and map fonts and sprites (`apps/web/public/map-assets/`) are in the repo. To regenerate them for another area or newer data, run `scripts/fetch-tiles.sh` once while online (needs `curl`, `unzip` and Node). Set `MAP_MODE=online` in `.env` to use the hosted OpenFreeMap style instead. Details in `docs/ARCHITECTURE.md`.
@@ -36,7 +63,9 @@ The map works with no internet by default (`MAP_MODE=offline`): the exercise-are
 | `pnpm build` | build every workspace |
 | `pnpm test` | Vitest in every workspace |
 | `pnpm typecheck` / `pnpm lint` | quality gates |
-| `pnpm db:migrate` / `pnpm db:seed` | database migration / seed |
+| `pnpm db:migrate` / `pnpm db:seed` | database migration / seed (three scenarios, demo accounts) |
+| `pnpm e2e` | Playwright: lobby, full multiplayer exercise, offline maps and 3D terrain, the three scenarios |
+| `pnpm --filter @vyuha/server geo:fallback` | refresh the bundled terrain and weather from Open-Meteo |
 
 ## Layout
 - `packages/engine` — pure deterministic simulation (seeded PRNG)
