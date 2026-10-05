@@ -10,8 +10,23 @@ export function LandingPage() {
     <>
       <AppHeader />
       <main>
-        <section className="border-b border-border bg-secondary">
-          <div className="mx-auto max-w-7xl px-4 py-12">
+        <section className="relative overflow-hidden border-b border-border bg-secondary">
+          {/* Decorative army scene on the right; it fades out under the text so the heading stays readable. */}
+          <div
+            aria-hidden="true"
+            className="vy-hero-art pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: `url(${import.meta.env.BASE_URL}hero-army.svg)`,
+              backgroundSize: 'auto 100%',
+              backgroundPosition: 'right bottom',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="vy-hero-art pointer-events-none absolute inset-0 bg-gradient-to-r from-secondary via-secondary/85 to-transparent"
+          />
+          <div className="relative mx-auto max-w-7xl px-4 py-12">
             <h1 className="max-w-3xl text-3xl font-bold text-primary sm:text-4xl">
               {t('landing.heroTitle')}
             </h1>

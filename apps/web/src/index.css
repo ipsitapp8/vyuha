@@ -34,6 +34,9 @@
   --navy: 0 0% 0%;
   --focus: 50 100% 55%;
 }
+.hc .vy-hero-art {
+  display: none;
+}
 .hc .text-red-700,
 .hc .text-red-800 {
   color: #ff9a9a;
