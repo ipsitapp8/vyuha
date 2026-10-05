@@ -96,6 +96,52 @@ test.describe('base map with the network unplugged', () => {
     await expect(page.getByText(/Street map unavailable/)).toHaveCount(0);
   });
 
+  test('3D terrain is built from the stored elevation grid and needs no external request', async ({
+    page,
+    playwright,
+  }) => {
+    const seen = await blockExternal(page);
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    page.on('console', (m) => {
+      if (m.type() === 'error') errors.push(m.text());
+    });
+    const sessionId = await startedSession(page, playwright);
+    await page.goto(`/instructor/sessions/${sessionId}`);
+    await expectDrawn(page, /Ground truth map/);
+    const map = page.getByRole('application', { name: /Ground truth map/ });
+    const flat = await map.screenshot();
+
+    // the elevation tiles are painted in the browser from the grid the VYUHA server already holds
+    const grid = page.waitForResponse((r) => /\/scenarios\/[^/]+\/terrain$/.test(r.url()));
+    const toggle = page.getByRole('button', { name: '3D terrain' });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(map).toHaveAttribute('data-terrain3d', 'on');
+    expect((await grid).status()).toBe(200);
+    await expect
+      .poll(async () => Buffer.compare(await map.screenshot(), flat) !== 0, { timeout: 20_000 })
+      .toBe(true);
+    await page.waitForTimeout(1500); // let the elevation tiles load and the camera settle
+    await page.screenshot({ path: 'test-results/offline-map-3d.png' });
+
+    // the choice is remembered, and it switches back off cleanly
+    await page.reload();
+    await expect(page.getByRole('application', { name: /Ground truth map/ })).toHaveAttribute(
+      'data-terrain3d',
+      'on',
+    );
+    await page.getByRole('button', { name: '3D terrain' }).click();
+    await expect(page.getByRole('application', { name: /Ground truth map/ })).toHaveAttribute(
+      'data-terrain3d',
+      'off',
+    );
+
+    expect(seen.blocked, 'nothing tried to reach the internet').toEqual([]);
+    expect(seen.failed, 'no failed requests').toEqual([]);
+    expect(errors, 'no page errors').toEqual([]);
+  });
+
   test('falls back to a hillshade from the stored terrain when the tile file is missing', async ({
     page,
     playwright,

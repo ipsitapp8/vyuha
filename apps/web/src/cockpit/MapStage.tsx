@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Crosshair, Move, X } from 'lucide-react';
+import { Crosshair, Mountain, Move, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AreaBounds, LatLon, PerceivedStateDto, PlayerAction } from '@vyuha/shared';
 import { Select } from '@/components/Select';
 import { Button } from '@/components/ui/button';
 import { clock } from '@/lib/format';
+import { readTerrain3dPref, saveTerrain3dPref } from '@/lib/terrain3d';
 import { CockpitMap } from './CockpitMap';
 import type { Degradation } from './logic';
 import type { ProbeMarker } from './probe';
@@ -46,6 +47,7 @@ export function MapStage({
   const [tool, setTool] = useState<Tool>(null);
   const [unitId, setUnitId] = useState(perceived.self.unitId);
   const [offline, setOffline] = useState(false);
+  const [terrain3d, setTerrain3d] = useState(readTerrain3dPref);
   const canCommandOthers = perceived.role === 'PL_CDR';
   const movable = [
     { value: perceived.self.unitId, label: perceived.self.name },
@@ -77,6 +79,8 @@ export function MapStage({
         onSelectContact={onSelectContact}
         pickMode={probe !== null || (tool !== null && !paused)}
         onPick={onPick}
+        probeMarkers={probe?.markers ?? []}
+        terrain3d={terrain3d}
         onTilesOffline={() => setOffline(true)}
       />
 
@@ -129,6 +133,18 @@ export function MapStage({
         </div>
 
         <div className="pointer-events-none flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            className="pointer-events-auto"
+            aria-pressed={terrain3d}
+            onClick={() => {
+              saveTerrain3dPref(!terrain3d);
+              setTerrain3d(!terrain3d);
+            }}
+          >
+            <Mountain className="mr-1 h-4 w-4" aria-hidden="true" />
+            {t('map.terrain3d')}
+          </Button>
           {degradation.jammed ? (
             <span
               role="status"

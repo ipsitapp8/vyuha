@@ -11,9 +11,11 @@ import {
 } from '@vyuha/shared';
 import { CockpitMap } from '@/cockpit/CockpitMap';
 import { Link } from 'react-router-dom';
+import { Mountain, Snowflake } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { clock } from '@/lib/format';
+import { readTerrain3dPref, saveTerrain3dPref } from '@/lib/terrain3d';
 import { ackErrorText } from '@/lib/messages';
 import type { SessionLive } from '@/lib/useSessionSocket';
 import { DegradationPanel } from './DegradationPanel';
@@ -50,6 +52,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [quick, setQuick] = useState<InjectType | null>(null);
   const [tilesOffline, setTilesOffline] = useState(false);
+  const [terrain3d, setTerrain3d] = useState(readTerrain3dPref);
 
   // Rooms are lost on reconnect: ask for the watched trainee's picture again.
   useEffect(() => {
@@ -111,6 +114,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
               truth={truth}
               watched={watched}
               onTilesOffline={() => setTilesOffline(true)}
+              terrain3d={terrain3d}
             />
           </div>
         </figure>
@@ -129,6 +133,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
                 onSelectContact={() => undefined}
                 pickMode={false}
                 onPick={() => undefined}
+                terrain3d={terrain3d}
                 onTilesOffline={() => setTilesOffline(true)}
               />
             ) : (

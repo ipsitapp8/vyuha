@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import '@/lib/maplibre';
 import { useTranslation } from 'react-i18next';
 import { attachBasemap, INITIAL_STYLE } from '@/lib/basemap';
+import { applyTerrain3d } from '@/lib/terrain3d';
 import type { AreaBounds, LatLon, PerceivedStateDto } from '@vyuha/shared';
 import { EMPTY_LINE, MarkerLayer } from './markers';
 import type { ProbeMarker } from './probe';
@@ -22,6 +23,10 @@ interface Props {
   pickMode: boolean;
   onPick: (point: LatLon) => void;
   onTilesOffline: () => void;
+  /** Show the ground in 3D, built from the scenario's stored elevation grid (works offline). */
+  terrain3d?: boolean;
+  /** Markers the trainee has placed while answering a situation-awareness probe. */
+  probeMarkers?: readonly ProbeMarker[];
 }
 
 /** Tactical map: own unit, teammates (last known), and reported contacts as accessible markers. */
@@ -35,6 +40,8 @@ export function CockpitMap({
   pickMode,
   onPick,
   onTilesOffline,
+  terrain3d = false,
+  probeMarkers,
 }: Props) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,6 +51,7 @@ export function CockpitMap({
   const onPickRef = useRef(onPick);
   const pickModeRef = useRef(pickMode);
   const offlineRef = useRef(onTilesOffline);
+  const terrainRef = useRef(terrain3d);
 
   useEffect(() => {
     onSelectRef.current = onSelectContact;
@@ -79,6 +87,8 @@ export function CockpitMap({
       });
     };
     map.on('style.load', ensureLine);
+    // a new style drops every source, the elevation one included: put the terrain back
+    map.on('style.load', () => applyTerrain3d(map, scenarioId, terrainRef.current));
     const detachBasemap = attachBasemap(map, {
       bounds,
       scenarioId,
@@ -96,6 +106,14 @@ export function CockpitMap({
       mapRef.current = null;
     };
   }, [bounds, scenarioId]);
+
+  useEffect(() => {
+    terrainRef.current = terrain3d;
+    const map = mapRef.current;
+    // Not gated on isStyleLoaded(): that is also false while tiles load. If the style really is not
+    // there yet the call is a no-op and the style.load handler applies it.
+    if (map) applyTerrain3d(map, scenarioId, terrain3d);
+  }, [terrain3d, scenarioId]);
 
   useEffect(() => {
     const canvas = mapRef.current?.getCanvas();

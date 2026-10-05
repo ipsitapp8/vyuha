@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { clock } from '@/lib/format';
 import { ChannelIcon, SignalBars } from './ChannelIcon';
 import { computeDegradation, deliveryFlags } from './logic';
+import { RadioAudioControls } from './RadioAudioControls';
+import type { RadioAudioControls as AudioControls } from './useRadioAudio';
 
 const CHANNELS = channelSchema.options;
 type Send = (a: PlayerAction) => Promise<boolean>;
@@ -24,11 +26,14 @@ interface Props {
   selfId: string | null;
   pending: boolean;
   send: Send;
+  /** Radio audio mute and volume; absent where the panel is shown without sound. */
+  audio?: AudioControls;
 }
 
-export function CommsPanel({ perceived, lobby, selfId, pending, send }: Props) {
+export function CommsPanel({ perceived, lobby, selfId, pending, send, audio }: Props) {
   return (
     <div className="flex flex-col gap-6">
+      {audio ? <RadioAudioControls {...audio} /> : null}
       <Radio perceived={perceived} pending={pending} send={send} />
       <Compose perceived={perceived} lobby={lobby} selfId={selfId} pending={pending} send={send} />
       <Inbox perceived={perceived} pending={pending} send={send} />
@@ -36,7 +41,7 @@ export function CommsPanel({ perceived, lobby, selfId, pending, send }: Props) {
   );
 }
 
-function Radio({ perceived, pending, send }: Omit<Props, 'lobby' | 'selfId'>) {
+function Radio({ perceived, pending, send }: Omit<Props, 'lobby' | 'selfId' | 'audio'>) {
   const { t } = useTranslation();
   const active = perceived.comms.activeChannel;
   const [selected, setSelected] = useState<Channel | null>(null);
@@ -111,7 +116,7 @@ function Radio({ perceived, pending, send }: Omit<Props, 'lobby' | 'selfId'>) {
   );
 }
 
-function Compose({ perceived, lobby, selfId, pending, send }: Props) {
+function Compose({ perceived, lobby, selfId, pending, send }: Omit<Props, 'audio'>) {
   const { t } = useTranslation();
   const mates = lobby.players.filter((p) => p.id !== selfId && p.teamId !== null);
   const [to, setTo] = useState('');
@@ -176,7 +181,7 @@ function Compose({ perceived, lobby, selfId, pending, send }: Props) {
   );
 }
 
-function Inbox({ perceived, pending, send }: Omit<Props, 'lobby' | 'selfId'>) {
+function Inbox({ perceived, pending, send }: Omit<Props, 'lobby' | 'selfId' | 'audio'>) {
   const { t } = useTranslation();
   const messages = [...perceived.inbox].reverse();
   return (

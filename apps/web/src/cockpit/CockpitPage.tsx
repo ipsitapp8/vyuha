@@ -25,6 +25,7 @@ import {
 } from './probe';
 import { ProbePanel } from './ProbePanel';
 import { ReportsPanel } from './ReportsPanel';
+import { useRadioAudio } from './useRadioAudio';
 
 const NOTICE_TYPES = [
   'INPUT_REJECTED',
@@ -142,6 +143,7 @@ function Cockpit({
 }) {
   const { t, i18n } = useTranslation();
   const { act } = live;
+  const audio = useRadioAudio(perceived, i18n.language);
   const [tab, setTab] = useState<TabId>('comms');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{ contactId: string | null; nonce: number } | null>(null);
@@ -319,31 +321,43 @@ function Cockpit({
                 aria-labelledby={`tab-${tab}`}
                 className="min-h-0 flex-1 overflow-y-auto p-4"
               >
-                {notices.map((e, i) => (
-                  <li key={`${e.tick}-${e.type}-${i}`}>
-                    {clock(e.tick)} {noticeText(t, e)}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {tab === 'comms' ? (
-              <CommsPanel
-                perceived={perceived}
-                lobby={lobby}
-                selfId={live.playerId}
-                pending={blocked}
-                send={send}
-              />
-            ) : (
-              <ReportsPanel
-                perceived={perceived}
-                selectedId={selectedId}
-                pending={blocked}
-                send={send}
-                onDecide={(id) => openDecision(id)}
-              />
-            )}
-          </div>
+                {feedback ? (
+                  <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-800">
+                    {feedback}
+                  </p>
+                ) : null}
+                {notices.length > 0 ? (
+                  <ul
+                    aria-label={t('cockpit.notices.region')}
+                    aria-live="polite"
+                    className="mb-3 text-sm text-amber-800"
+                  >
+                    {notices.map((e, i) => (
+                      <li key={`${e.tick}-${e.type}-${i}`}>
+                        {clock(e.tick)} {noticeText(t, e)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {tab === 'comms' ? (
+                  <CommsPanel
+                    perceived={perceived}
+                    lobby={lobby}
+                    selfId={live.playerId}
+                    pending={blocked}
+                    send={send}
+                    audio={audio}
+                  />
+                ) : (
+                  <ReportsPanel
+                    perceived={perceived}
+                    selectedId={selectedId}
+                    pending={blocked}
+                    send={send}
+                    onDecide={(id) => openDecision(id)}
+                  />
+                )}
+              </div>
 
               <div className="border-t border-border p-3">
                 <Button
