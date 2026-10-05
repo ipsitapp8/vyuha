@@ -14,6 +14,16 @@ import { DecisionDialog } from './DecisionDialog';
 import { LobbyPanel } from './LobbyPanel';
 import { computeDegradation, orderAlerts } from './logic';
 import { MapStage } from './MapStage';
+import { MySaScores } from './MySaScores';
+import {
+  blankPicture,
+  draftMarkers,
+  emptyDraft,
+  placePoint,
+  toAnswer,
+  type ProbeDraft,
+} from './probe';
+import { ProbePanel } from './ProbePanel';
 import { ReportsPanel } from './ReportsPanel';
 
 const NOTICE_TYPES = [
@@ -105,9 +115,12 @@ export function CockpitPage() {
           </p>
         ) : null}
         {status === 'ENDED' ? (
-          <p className="mt-4 rounded-lg border border-border bg-secondary p-4">
-            {t('cockpit.ended')}
-          </p>
+          <>
+            <p className="mt-4 rounded-lg border border-border bg-secondary p-4">
+              {t('cockpit.ended')}
+            </p>
+            {live.lobby && live.playerId ? <MySaScores sessionId={live.lobby.session.id} /> : null}
+          </>
         ) : null}
       </main>
     </>
@@ -127,7 +140,7 @@ function Cockpit({
   perceived: PerceivedStateDto;
   paused: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { act } = live;
   const [tab, setTab] = useState<TabId>('comms');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -148,6 +161,31 @@ function Cockpit({
     },
     [act, t],
   );
+
+  // ---- situation-awareness probe (SAGAT): answered from memory while the exercise is frozen ----
+  const probe = perceived.probe;
+  const [draftState, setDraftState] = useState<{ id: string; draft: ProbeDraft } | null>(null);
+  const [submittedProbes, setSubmittedProbes] = useState<string[]>([]);
+  const [sendingProbe, setSendingProbe] = useState(false);
+  const draft = probe && draftState?.id === probe.id ? draftState.draft : emptyDraft();
+  const probeSubmitted = probe !== null && submittedProbes.includes(probe.id);
+  const answering = probe !== null && !probeSubmitted;
+  const setDraft = (next: ProbeDraft): void => {
+    if (probe) setDraftState({ id: probe.id, draft: next });
+  };
+  const submitProbe = async (): Promise<void> => {
+    if (!probe) return;
+    setSendingProbe(true);
+    const ok = await send(toAnswer(probe.id, draft));
+    setSendingProbe(false);
+    if (ok) setSubmittedProbes((list) => [...list, probe.id]);
+  };
+  const mateNames = Object.fromEntries(perceived.friendlies.map((f) => [f.unitId, f.name]));
+  const probeHint = !answering
+    ? ''
+    : draft.target.kind === 'contact'
+      ? t('cockpit.probe.hintContact')
+      : t('cockpit.probe.hintTeammate', { name: mateNames[draft.target.unitId] ?? '' });
 
   const degradation = computeDegradation(perceived);
   // When the data-link is lost, the shared picture (teammates + contacts) freezes at the last good state.
@@ -184,12 +222,12 @@ function Cockpit({
           {clock(perceived.tick)}
         </p>
       </div>
-      {paused ? (
+      {paused || answering ? (
         <p
           role="status"
           className="bg-amber-500 px-4 py-1 text-center text-sm font-bold text-black"
         >
-          {t('cockpit.paused')}
+          {probe ? t('cockpit.probe.banner') : t('cockpit.paused')}
         </p>
       ) : null}
       {live.error ? (
@@ -204,10 +242,21 @@ function Cockpit({
             bounds={lobby.session.areaBounds}
             scenarioId={lobby.session.scenarioId}
             perceived={perceived}
-            picture={picture}
+            picture={probe && (answering || paused) ? blankPicture(picture) : picture}
             degradation={degradation}
-            frozen={degradation.datalinkLost}
+            frozen={degradation.datalinkLost && !probe}
             paused={paused}
+            probe={
+              answering
+                ? {
+                    markers: draftMarkers(draft, mateNames, (n) =>
+                      t('cockpit.probe.contactN', { n }),
+                    ),
+                    hint: probeHint,
+                    onPick: (point) => setDraft(placePoint(draft, point)),
+                  }
+                : null
+            }
             selectedContactId={selectedId}
             onSelectContact={(id) => {
               setSelectedId(id);
@@ -220,48 +269,55 @@ function Cockpit({
         </section>
 
         <aside className="flex min-h-0 flex-1 flex-col border-t border-border lg:w-[26rem] lg:flex-none lg:border-l lg:border-t-0">
-          <div
-            role="tablist"
-            aria-label={t('cockpit.tabs.label')}
-            className="flex border-b border-border"
-          >
-            {(['comms', 'reports'] as const).map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`tab-${id}`}
-                aria-selected={tab === id}
-                aria-controls={`panel-${id}`}
-                onClick={() => setTab(id)}
-                className={
-                  tab === id
-                    ? 'flex-1 border-b-2 border-primary px-3 py-2 text-sm font-semibold'
-                    : 'flex-1 px-3 py-2 text-sm text-muted-foreground hover:bg-secondary'
-                }
+          {probe && (answering || paused) ? (
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {feedback ? (
+                <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-800">
+                  {feedback}
+                </p>
+              ) : null}
+              <ProbePanel
+                perceived={perceived}
+                draft={draft}
+                onChange={setDraft}
+                submitted={probeSubmitted}
+                sending={sendingProbe}
+                onSubmit={() => void submitProbe()}
+              />
+            </div>
+          ) : (
+            <>
+              <div
+                role="tablist"
+                aria-label={t('cockpit.tabs.label')}
+                className="flex border-b border-border"
               >
-                {t(`cockpit.tabs.${id}`)}
-                {id === 'reports' ? ` (${perceived.contacts.length})` : ''}
-              </button>
-            ))}
-          </div>
+                {(['comms', 'reports'] as const).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={`tab-${id}`}
+                    aria-selected={tab === id}
+                    aria-controls={`panel-${id}`}
+                    onClick={() => setTab(id)}
+                    className={
+                      tab === id
+                        ? 'flex-1 border-b-2 border-primary px-3 py-2 text-sm font-semibold'
+                        : 'flex-1 px-3 py-2 text-sm text-muted-foreground hover:bg-secondary'
+                    }
+                  >
+                    {t(`cockpit.tabs.${id}`)}
+                    {id === 'reports' ? ` (${perceived.contacts.length})` : ''}
+                  </button>
+                ))}
+              </div>
 
-          <div
-            role="tabpanel"
-            id={`panel-${tab}`}
-            aria-labelledby={`tab-${tab}`}
-            className="min-h-0 flex-1 overflow-y-auto p-4"
-          >
-            {feedback ? (
-              <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-800">
-                {feedback}
-              </p>
-            ) : null}
-            {notices.length > 0 ? (
-              <ul
-                aria-label={t('cockpit.notices.region')}
-                aria-live="polite"
-                className="mb-3 text-sm text-amber-800"
+              <div
+                role="tabpanel"
+                id={`panel-${tab}`}
+                aria-labelledby={`tab-${tab}`}
+                className="min-h-0 flex-1 overflow-y-auto p-4"
               >
                 {notices.map((e, i) => (
                   <li key={`${e.tick}-${e.type}-${i}`}>
@@ -289,16 +345,22 @@ function Cockpit({
             )}
           </div>
 
-          <div className="border-t border-border p-3">
-            <Button className="w-full" disabled={paused} onClick={() => openDecision(selectedId)}>
-              {t('cockpit.decision.open')}
-            </Button>
-            {recordedAt !== null ? (
-              <p role="status" className="mt-1 text-center text-xs text-primary">
-                {t('cockpit.decision.recorded')}
-              </p>
-            ) : null}
-          </div>
+              <div className="border-t border-border p-3">
+                <Button
+                  className="w-full"
+                  disabled={paused}
+                  onClick={() => openDecision(selectedId)}
+                >
+                  {t('cockpit.decision.open')}
+                </Button>
+                {recordedAt !== null ? (
+                  <p role="status" className="mt-1 text-center text-xs text-primary">
+                    {t('cockpit.decision.recorded')}
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )}
         </aside>
       </div>
 

@@ -478,7 +478,9 @@
       "decisions": "Decisions",
       "watch": "Watch",
       "watching": "Watching",
-      "brierLabel": "Brier score"
+      "brierLabel": "Brier score",
+      "sa": "Situation awareness",
+      "saLine": "last {{last}} · mean {{mean}} ({{count}})"
     },
     "inject": {
       "title": "Live injects",
@@ -633,7 +635,8 @@
       "spoofs": "Spoofs acted on",
       "challenged": "Challenged",
       "drift": "Drift (m)",
-      "help": "Correct = share of scored decisions that were right. Brier = calibration score, lower is better. Latency = seconds from the relevant information arriving to the decision. Grading = Admiralty grading accuracy against the hidden truth. Challenged = spoofed orders received that they challenged with Authenticate, with the count in brackets. Drift = average position error of their picture."
+      "help": "Correct = share of scored decisions that were right. Brier = calibration score, lower is better. Latency = seconds from the relevant information arriving to the decision. Grading = Admiralty grading accuracy against the hidden truth. Challenged = spoofed orders received that they challenged with Authenticate, with the count in brackets. Drift = average position error of their picture.",
+      "sa": "SA score"
     },
     "learning": {
       "title": "Key learning points",
@@ -784,7 +787,8 @@
       "latencyUnderJammingMs": "Decision latency under jamming (s)",
       "brierScore": "Brier score (lower is better)",
       "spoofsChallengedPct": "Fake orders challenged (%)",
-      "reportGradingAccuracy": "Report grading accuracy (%)"
+      "reportGradingAccuracy": "Report grading accuracy (%)",
+      "saScore": "Situation awareness score (0-100)"
     },
     "delayCard": {
       "title": "Session {{to}} vs session {{from}}: decision delay under jamming",

@@ -349,6 +349,7 @@ describe('progress section of the PDF', () => {
         brierScore: 0.5,
         spoofsChallengedPct: 0,
         reportGradingAccuracy: 0.4,
+        saScore: 55,
       },
     ]);
     const text = await pdfText(x);
@@ -369,6 +370,7 @@ describe('progress section of the PDF', () => {
         brierScore: brier,
         spoofsChallengedPct: day === 1 ? 0 : 100,
         reportGradingAccuracy: 0.75,
+        saScore: 62,
       },
     });
     const d = describeProgress([
@@ -377,7 +379,7 @@ describe('progress section of the PDF', () => {
       session(30_000, 0.2, 3),
     ]);
     expect(d.rows).toHaveLength(3);
-    expect(d.rows[0]).toEqual(['1', '2026-01-01', '40 s', '40 s', '0.50', '0%', '75%']);
+    expect(d.rows[0]).toEqual(['1', '2026-01-01', '40 s', '40 s', '0.50', '0%', '75%', '62']);
     expect(d.delay).toContain('session 3 vs session 1: -25%');
     expect(d.brier).toBe('Brier score trend: improving (lower is better).');
 

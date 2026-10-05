@@ -151,6 +151,11 @@ export const decisionActionSchema = z.enum([
   'REQUEST_SUPPORT',
 ]);
 
+export const PROBE_MAX_CONTACTS = 20;
+export const PROBE_MAX_TEAMMATES = 16;
+export const probeChannelSchema = z.union([channelSchema, z.literal('NONE')]);
+export type ProbeChannel = z.infer<typeof probeChannelSchema>;
+
 /** Everything a trainee can do in a running session. The server adds the player id from the socket. */
 export const playerActionSchema = z.discriminatedUnion('type', [
   z.object({
@@ -178,6 +183,19 @@ export const playerActionSchema = z.discriminatedUnion('type', [
     targetContactId: z.string().min(1).optional(),
     basedOnMessageId: z.string().min(1).optional(),
   }),
+  // Answer to a situation-awareness probe (SAGAT). Accepted while the exercise is frozen.
+  z.object({
+    type: z.literal('PROBE_ANSWER'),
+    probeId: z.string().min(1).max(64),
+    contacts: z.array(latLonSchema).max(PROBE_MAX_CONTACTS),
+    teammates: z
+      .array(z.object({ unitId: z.string().min(1).max(64), position: latLonSchema }))
+      .max(PROBE_MAX_TEAMMATES)
+      .refine((list) => new Set(list.map((t) => t.unitId)).size === list.length, {
+        message: 'Each teammate can be placed once',
+      }),
+    jammedChannel: probeChannelSchema,
+  }),
 ]);
 export type PlayerAction = z.infer<typeof playerActionSchema>;
 
@@ -192,6 +210,10 @@ export const instructorInputSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('MSEL_ADD'), inject: injectSchema }),
   z.object({ type: z.literal('MSEL_UPDATE'), inject: injectSchema }),
   z.object({ type: z.literal('MSEL_REMOVE'), injectId: z.string().min(1) }),
+  // Opens a situation-awareness probe. The server assigns the id (POST /sessions/:id/probe also pauses).
+  z.object({ type: z.literal('PROBE_START'), probeId: z.string().min(1).max(64) }),
+  // Closes any open probe; trainees who have not answered score zero. Sent when the exercise ends.
+  z.object({ type: z.literal('PROBE_CLOSE') }),
 ]);
 export type InstructorInput = z.infer<typeof instructorInputSchema>;
 
@@ -306,6 +328,10 @@ export const perceivedStateSchema = z.object({
     signal: signalSchema,
   }),
   weather: weatherViewSchema,
+  /** A situation-awareness probe waiting for this trainee's answer. Carries no ground truth. */
+  probe: z
+    .object({ id: z.string(), tick: z.number().int(), expiresAtTick: z.number().int() })
+    .nullable(),
 });
 export type PerceivedStateDto = z.infer<typeof perceivedStateSchema>;
 
@@ -332,6 +358,10 @@ export const playerMetricsViewSchema = z.object({
   gradingAccuracy: z.number().nullable(),
   channelSwitchCount: z.number().int(),
   spoofActedCount: z.number().int(),
+  /** Situation-awareness probes scored so far, the latest score and the mean (0..100). */
+  probeCount: z.number().int(),
+  lastSaScore: z.number().nullable(),
+  saScore: z.number().nullable(),
   lastDecision: z
     .object({
       tick: z.number().int(),

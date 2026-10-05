@@ -55,6 +55,7 @@ const session = (n: number, over: Partial<ProgressSession['metrics']> = {}): Pro
     brierScore: 0.4,
     spoofsChallengedPct: 50,
     reportGradingAccuracy: 0.6,
+    saScore: 58,
     ...over,
   },
 });

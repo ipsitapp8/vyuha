@@ -7,6 +7,7 @@ import { AarCharts } from '@/aar/AarCharts';
 import { FlowGraph } from '@/aar/FlowGraph';
 import { GhostReplay } from '@/aar/GhostReplay';
 import { KeyEvents, LearningList } from '@/aar/LearningPoints';
+import { ProbeReview } from '@/aar/ProbeReview';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -123,6 +124,7 @@ function Review({ summary }: { summary: AarSummary }) {
                 <th className="p-1 text-right">{t('aar.summary.spoofs')}</th>
                 <th className="p-1 text-right">{t('aar.summary.challenged')}</th>
                 <th className="p-1 text-right">{t('aar.summary.drift')}</th>
+                <th className="p-1 text-right">{t('aar.summary.sa')}</th>
               </tr>
             </thead>
             <tbody>
@@ -162,6 +164,9 @@ function Review({ summary }: { summary: AarSummary }) {
                   <td className="p-1 text-right">
                     {p.drift ? Math.round(p.drift.meanPositionErrorM) : '–'}
                   </td>
+                  <td className="p-1 text-right">
+                    {p.saScore === null ? '–' : Math.round(p.saScore)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -172,6 +177,7 @@ function Review({ summary }: { summary: AarSummary }) {
 
       <LearningList summary={summary} />
       <GhostReplay summary={summary} />
+      <ProbeReview summary={summary} />
       <AarCharts summary={summary} />
       <FlowGraph summary={summary} />
       <KeyEvents summary={summary} />

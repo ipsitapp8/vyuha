@@ -62,6 +62,7 @@ export function perceived(over: Partial<PerceivedStateDto> = {}): PerceivedState
       signal: { VHF: 0.9, HF: 0.7, SATCOM: 0.9, DATALINK: 0.8, RUNNER: null },
     },
     weather: { visibilityM: 10000, precipitationMm: 0, windKph: 5 },
+    probe: null,
     ...over,
   };
 }

@@ -94,6 +94,7 @@ export class ProgressService {
           brierScore: r.brierScore,
           spoofsChallengedPct: r.spoofsChallengedPct,
           reportGradingAccuracy: r.reportGradingAccuracy,
+          saScore: r.saScore,
         },
       })),
     });

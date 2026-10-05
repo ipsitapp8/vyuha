@@ -6,12 +6,13 @@ import {
   type AarDecisionDetail,
   type AarSnapshot,
   type AarSummary,
+  type MySaScoresResponse,
 } from '@vyuha/shared';
 import { z } from 'zod';
 import { HttpError } from '../errors';
 import { inputsFromLog, startedPayloadSchema } from '../sessions/manager';
-import type { EventRow, SessionStore, StoredDecision } from '../sessions/store';
-import { decisionsCsv, fullLogJson } from './exports';
+import type { EventRow, SessionRow, SessionStore, StoredDecision } from '../sessions/store';
+import { aarCsv, fullLogJson } from './exports';
 import { renderAarPdf, type ProgressByPlayer } from './pdf';
 import { Replayer } from './replayer';
 
@@ -86,6 +87,7 @@ export class AarService {
           brierScore: r.brierScore,
           spoofsChallengedPct: r.spoofsChallengedPct,
           reportGradingAccuracy: r.reportGradingAccuracy,
+          saScore: r.saScore,
         },
       }));
     }
@@ -166,6 +168,7 @@ export class AarService {
 
     const initial = createTruthState(p.scenario, p.terrain, p.weather, p.seed, p.roster as Roster);
     return {
+      userOf: new Map(playerRows.map((r) => [r.id, r.userId])),
       summary,
       events,
       stored,
@@ -202,9 +205,39 @@ export class AarService {
     return parsed.data;
   }
 
+  /**
+   * A trainee's own situation-awareness scores, once the exercise has ended. Scores and counts only:
+   * the frozen truth (where units really were) stays with the instructor.
+   */
+  async saScoresForUser(sessionId: string, userId: string): Promise<MySaScoresResponse> {
+    const session = await this.store.getSession(sessionId);
+    if (!session) throw new HttpError(404, 'SESSION_NOT_FOUND', 'Session not found');
+    const player = await this.store.findPlayerByUser(sessionId, userId);
+    if (!player) throw new HttpError(403, 'NOT_IN_SESSION', 'You have not joined this session');
+    const { summary } = await this.data(sessionId);
+    const probes = summary.analysis.probes.flatMap((probe) =>
+      probe.results
+        .filter((r) => r.playerId === player.id)
+        .map((r) => ({
+          probeId: probe.probeId,
+          tick: probe.tick,
+          answered: r.answered,
+          score: r.score,
+          channelCorrect: r.channelCorrect,
+          contactsFound: r.matched.length,
+          contactsMissed: r.missedUnitIds.length,
+          ghostCount: r.ghostCount,
+          avgContactErrorM: r.avgContactErrorM,
+          avgTeammateErrorM: r.avgTeammateErrorM,
+        })),
+    );
+    const saScore = summary.analysis.players.find((p) => p.playerId === player.id)?.saScore ?? null;
+    return { probes, saScore };
+  }
+
   async csv(sessionId: string): Promise<{ filename: string; body: string }> {
     const { summary } = await this.data(sessionId);
-    return { filename: `vyuha-decisions-${summary.meta.code}.csv`, body: decisionsCsv(summary) };
+    return { filename: `vyuha-decisions-${summary.meta.code}.csv`, body: aarCsv(summary) };
   }
 
   async json(sessionId: string): Promise<{ filename: string; body: string }> {

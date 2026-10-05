@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AuthGuards } from '../auth';
+import { HttpError } from '../errors';
 import { guarded, parse } from '../sessions/routes';
 import type { AarService } from './service';
 
@@ -17,6 +18,16 @@ type Id = { sessionId: string };
 /** After action review endpoints (instructors only). Only ENDED sessions can be reviewed. */
 export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar: AarService): void {
   const instructor = { preHandler: guards.requireRole('INSTRUCTOR') };
+
+  /** A trainee's own probe scores after the exercise (no ground truth in the response). */
+  app.get(
+    '/aar/:sessionId/my-sa',
+    { preHandler: guards.requireRole('TRAINEE') },
+    guarded<Id>(async (request) => {
+      if (!request.user) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in required');
+      return aar.saScoresForUser(request.params.sessionId, request.user.id);
+    }),
+  );
 
   app.get(
     '/aar/:sessionId',

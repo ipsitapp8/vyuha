@@ -11,6 +11,8 @@ export const progressMetricsSchema = z.object({
   spoofsChallengedPct: metric,
   /** 0..1 */
   reportGradingAccuracy: metric,
+  /** Mean situation-awareness probe score, 0..100. */
+  saScore: metric,
 });
 export type ProgressMetricsDto = z.infer<typeof progressMetricsSchema>;
 

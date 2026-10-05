@@ -83,7 +83,14 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
 
   return (
     <div className="mt-6 flex flex-col gap-6">
-      <RunControls lobby={lobby} status={status} speed={speed} busy={busy} run={run} />
+      <RunControls
+        lobby={lobby}
+        status={status}
+        speed={speed}
+        busy={busy}
+        run={run}
+        probe={truth.probe}
+      />
 
       {notice ? (
         <p
@@ -217,7 +224,14 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
   );
 }
 
-function RunControls({ lobby, status, speed, busy, run }: Omit<Props, 'live'>) {
+function RunControls({
+  lobby,
+  status,
+  speed,
+  busy,
+  run,
+  probe,
+}: Omit<Props, 'live'> & { probe: TruthViewDto['probe'] }) {
   const { t } = useTranslation();
   const sid = lobby.session.id;
   const ended = status === 'ENDED';

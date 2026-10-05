@@ -13,3 +13,4 @@ export * from './step';
 export * from './replay';
 export * from './aar';
 export * from './progress';
+export * from './probe';

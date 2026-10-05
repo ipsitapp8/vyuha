@@ -19,6 +19,7 @@ export const METRIC_VIEW: Record<ProgressMetricKey, { scale: number; digits: num
   brierScore: { scale: 1, digits: 2 },
   spoofsChallengedPct: { scale: 1, digits: 0 },
   reportGradingAccuracy: { scale: 100, digits: 0 },
+  saScore: { scale: 1, digits: 0 },
 };
 
 /** The metric's values per session in display units, null where it could not be measured. */

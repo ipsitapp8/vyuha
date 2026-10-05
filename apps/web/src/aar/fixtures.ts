@@ -86,6 +86,8 @@ export function aarSummary(): AarSummary {
           spoofActedCount: 0,
           spoofsReceived: 0,
           spoofsChallenged: 0,
+          probeCount: 0,
+          saScore: null,
           spoofsChallengedPct: null,
           meanConfidence: 90,
           accuracy: 100,
@@ -112,6 +114,8 @@ export function aarSummary(): AarSummary {
           spoofActedCount: 1,
           spoofsReceived: 1,
           spoofsChallenged: 1,
+          probeCount: 0,
+          saScore: null,
           spoofsChallengedPct: 100,
           meanConfidence: 95,
           accuracy: 0,
@@ -209,6 +213,7 @@ export function aarSummary(): AarSummary {
           params: { accuracy: 90, grades: 2 },
         },
       ],
+      probes: [],
     },
   };
 }

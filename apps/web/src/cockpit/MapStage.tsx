@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { clock } from '@/lib/format';
 import { CockpitMap } from './CockpitMap';
 import type { Degradation } from './logic';
+import type { ProbeMarker } from './probe';
 
 export type Tool = 'move' | 'isr' | null;
 
@@ -21,6 +22,8 @@ interface Props {
   selectedContactId: string | null;
   onSelectContact: (id: string) => void;
   send: (a: PlayerAction) => Promise<boolean>;
+  /** Set while a situation-awareness probe is being answered: map clicks place the answer's markers. */
+  probe?: { markers: readonly ProbeMarker[]; hint: string; onPick: (p: LatLon) => void } | null;
   children?: React.ReactNode;
 }
 
@@ -36,6 +39,7 @@ export function MapStage({
   selectedContactId,
   onSelectContact,
   send,
+  probe = null,
   children,
 }: Props) {
   const { t } = useTranslation();
@@ -52,6 +56,7 @@ export function MapStage({
   const targetUnit = movable.find((m) => m.value === unitId) ?? movable[0];
 
   const onPick = (point: LatLon): void => {
+    if (probe) return probe.onPick(point);
     const current = tool;
     setTool(null);
     if (current === 'move' && targetUnit) {
@@ -70,7 +75,7 @@ export function MapStage({
         picture={picture}
         selectedContactId={selectedContactId}
         onSelectContact={onSelectContact}
-        pickMode={tool !== null && !paused}
+        pickMode={probe !== null || (tool !== null && !paused)}
         onPick={onPick}
         onTilesOffline={() => setOffline(true)}
       />
@@ -85,7 +90,11 @@ export function MapStage({
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-2 p-2">
         <div className="pointer-events-auto flex flex-wrap items-center gap-2">
-          {tool === null ? (
+          {probe ? (
+            <p role="status" className="rounded-md bg-black/75 px-2 py-1 text-sm text-white">
+              {probe.hint}
+            </p>
+          ) : tool === null ? (
             <>
               <Button variant="secondary" disabled={paused} onClick={() => setTool('move')}>
                 <Move className="mr-1 h-4 w-4" aria-hidden="true" />

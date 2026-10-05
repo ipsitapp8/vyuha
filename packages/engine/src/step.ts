@@ -54,6 +54,10 @@ interface Ctx {
   events: EngineEvent[];
   /** Messages already sent this tick per `team|channel`, for the bandwidth model. */
   tickUsage: Map<string, number>;
+  /** A probe requested this tick; it freezes the truth as it stands at the end of the tick. */
+  probeToStart: string | null;
+  /** Close every open probe this tick (the exercise is ending): unanswered trainees score zero. */
+  closeProbes: boolean;
 }
 
 const INSTRUCTOR = 'instructor';
@@ -83,7 +87,14 @@ const teamPlayerIds = (s: TruthState, teamId: string): string[] =>
 export function step(state: TruthState, inputs: readonly EngineInput[], rng: Rng): StepResult {
   const s = cloneState(state);
   s.tick = state.tick + 1;
-  const ctx: Ctx = { s, rng, events: [], tickUsage: new Map() };
+  const ctx: Ctx = {
+    s,
+    rng,
+    events: [],
+    tickUsage: new Map(),
+    probeToStart: null,
+    closeProbes: false,
+  };
   const jamBefore = currentJamming(state);
 
   fireScheduledInjects(ctx);
@@ -97,6 +108,7 @@ export function step(state: TruthState, inputs: readonly EngineInput[], rng: Rng
   resolveAuthentications(ctx);
   sampleDrift(ctx);
   prune(ctx);
+  runProbes(ctx);
 
   const jamAfter = currentJamming(s);
   if (
@@ -703,6 +715,19 @@ function applyInput(ctx: Ctx, input: EngineInput): void {
   if (input.type === 'MSEL_ADD' || input.type === 'MSEL_UPDATE' || input.type === 'MSEL_REMOVE') {
     return editMsel(ctx, input);
   }
+  if (input.type === 'PROBE_START') {
+    if (s.players.length === 0) return reject(ctx, null, input.type, 'no trainees to probe');
+    if (ctx.probeToStart !== null)
+      return reject(ctx, null, input.type, 'a probe is already starting');
+    ctx.probeToStart = input.probeId;
+    return;
+  }
+  if (input.type === 'PROBE_CLOSE') {
+    ctx.closeProbes = true;
+    return;
+  }
+  // Answering is thinking, not acting: it is allowed even when the trainee's unit is out of action.
+  if (input.type === 'PROBE_ANSWER') return answerProbe(ctx, input);
 
   const player = getPlayer(s, input.playerId);
   const team = player ? getTeam(s, player.teamId) : undefined;

@@ -135,6 +135,10 @@ export function pendingToEngine(p: Pending): EngineInput {
       return { type: 'MSEL_UPDATE', inject: i.inject };
     case 'MSEL_REMOVE':
       return { type: 'MSEL_REMOVE', injectId: i.injectId };
+    case 'PROBE_START':
+      return { type: 'PROBE_START', probeId: i.probeId };
+    case 'PROBE_CLOSE':
+      return { type: 'PROBE_CLOSE' };
   }
 }
 
@@ -193,7 +197,28 @@ export function toEngineInput(playerId: string, a: PlayerAction): EngineInput {
         ...(a.targetContactId ? { targetContactId: a.targetContactId } : {}),
         ...(a.basedOnMessageId ? { basedOnMessageId: a.basedOnMessageId } : {}),
       };
+    case 'PROBE_ANSWER':
+      return {
+        type: 'PROBE_ANSWER',
+        playerId,
+        probeId: a.probeId,
+        contacts: a.contacts,
+        teammates: a.teammates,
+        jammedChannel: a.jammedChannel,
+      };
   }
+}
+
+function openProbeView(state: TruthState): TruthViewDto['probe'] {
+  const probe = state.probes.at(-1);
+  return probe
+    ? {
+        id: probe.id,
+        tick: probe.tick,
+        expiresAtTick: probe.expiresAtTick,
+        pending: [...probe.pending],
+      }
+    : null;
 }
 
 export function buildTruthView(state: TruthState, metrics: LiveMetrics): TruthViewDto {
@@ -297,6 +322,38 @@ export class SessionManager {
     });
   }
 
+  /**
+   * Freeze and probe (SAGAT): opens a situation-awareness probe on one last tick, then pauses the
+   * exercise so every trainee can answer. The probe start is a logged input, so it replays exactly.
+   */
+  async probe(sessionId: string): Promise<SessionRow> {
+    const rt = await this.requireRuntime(sessionId);
+    return this.exclusive(rt, async () => {
+      if (rt.status !== 'RUNNING')
+        throw new HttpError(409, 'SESSION_STATE', 'Session is not running');
+      if (rt.state.players.length === 0)
+        throw new HttpError(409, 'SESSION_STATE', 'There are no trainees to probe');
+      this.stopLoop(rt);
+      rt.pending.push({
+        kind: 'instructor',
+        input: this.prepareInstructorInput(rt, { type: 'PROBE_START', probeId: 'pending' }),
+      });
+      if (!(await this.runTicks(rt, 1))) {
+        // Nothing was stored: take the probe back out of the queue and carry on as before.
+        rt.pending = rt.pending.filter(
+          (q) => !(q.kind === 'instructor' && q.input.type === 'PROBE_START'),
+        );
+        this.startLoop(rt);
+        throw new HttpError(500, 'INTERNAL_ERROR', 'Could not start the probe. Try again.');
+      }
+      rt.status = 'PAUSED';
+      const row = await this.store.updateSession(sessionId, { status: 'PAUSED' });
+      await this.logLifecycle(rt, 'SESSION_PAUSED');
+      this.emitStatus(rt);
+      return row;
+    });
+  }
+
   async resume(sessionId: string): Promise<SessionRow> {
     const rt = await this.requireRuntime(sessionId);
     return this.exclusive(rt, async () => {
@@ -331,6 +388,23 @@ export class SessionManager {
     return this.exclusive(rt, async () => {
       const wasRunning = rt.status === 'RUNNING';
       this.stopLoop(rt);
+      // Actions already acknowledged to a trainee must not be lost: apply what is still queued in one
+      // last tick, and store its events, before the exercise is closed.
+      // A probe still open is closed in that same tick, after any answers queued before it.
+      const closing = rt.state.probes.length > 0;
+      if (closing) rt.pending.push({ kind: 'instructor', input: { type: 'PROBE_CLOSE' } });
+      if (rt.pending.length > 0 && !(await this.runTicks(rt, 1))) {
+        if (closing)
+          rt.pending = rt.pending.filter(
+            (q) => !(q.kind === 'instructor' && q.input.type === 'PROBE_CLOSE'),
+          );
+        if (wasRunning) this.startLoop(rt);
+        throw new HttpError(
+          500,
+          'INTERNAL_ERROR',
+          'Could not store the last actions; the exercise was not ended. Try again.',
+        );
+      }
       rt.status = 'ENDED';
       const row = await this.store.updateSession(sessionId, {
         status: 'ENDED',
@@ -366,8 +440,24 @@ export class SessionManager {
   /** Queues a validated trainee action; it is applied (and logged) on the next tick. */
   async enqueue(sessionId: string, playerId: string, action: PlayerAction): Promise<void> {
     const rt = await this.ensureRuntime(sessionId);
-    if (!rt || rt.status !== 'RUNNING') {
+    // A probe freezes the exercise, so its answers are the one action taken while it is paused. They
+    // wait in the queue and are scored on the first tick after the instructor resumes (or ends).
+    const frozenAnswer = action.type === 'PROBE_ANSWER' && rt?.status === 'PAUSED';
+    if (!rt || (rt.status !== 'RUNNING' && !frozenAnswer)) {
       throw new HttpError(409, 'SESSION_STATE', 'The exercise is not running');
+    }
+    if (action.type === 'PROBE_ANSWER') {
+      const open = rt.state.probes.find((p) => p.id === action.probeId);
+      const queued = rt.pending.some(
+        (q) =>
+          q.kind === 'player' &&
+          q.playerId === playerId &&
+          q.action.type === 'PROBE_ANSWER' &&
+          q.action.probeId === action.probeId,
+      );
+      if (!open || !open.pending.includes(playerId) || queued) {
+        throw new HttpError(409, 'SESSION_STATE', 'That probe is closed or already answered');
+      }
     }
     if (!rt.state.players.some((p) => p.id === playerId)) {
       throw new HttpError(403, 'NOT_IN_SESSION', 'You are not a player in this exercise');
@@ -402,6 +492,9 @@ export class SessionManager {
           tick: rt.state.tick + 1,
         },
       };
+    }
+    if (parsed.type === 'PROBE_START') {
+      return { type: 'PROBE_START', probeId: `probe-${randomUUID().slice(0, 8)}` };
     }
     if (parsed.type === 'MSEL_ADD') {
       return {

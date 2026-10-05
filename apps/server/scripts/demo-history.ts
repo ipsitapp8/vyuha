@@ -97,7 +97,8 @@ async function main(): Promise<void> {
       console.log(
         `  session ${i + 1}: latency ${s(r.avgDecisionLatencyMs)}, under jamming ${s(r.latencyUnderJammingMs)}, ` +
           `Brier ${r.brierScore === null ? '-' : r.brierScore.toFixed(2)}, ` +
-          `spoofs challenged ${pct(r.spoofsChallengedPct)}, grading ${pct(r.reportGradingAccuracy, 100)}`,
+          `spoofs challenged ${pct(r.spoofsChallengedPct)}, grading ${pct(r.reportGradingAccuracy, 100)}, ` +
+          `SA ${r.saScore === null ? '-' : r.saScore.toFixed(0)}`,
       );
     }
   }

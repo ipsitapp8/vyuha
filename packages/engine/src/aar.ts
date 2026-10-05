@@ -1,6 +1,7 @@
 import type { Channel } from '@vyuha/shared';
 import { CHANNELS } from './config';
 import { computeMetrics, spoofChallenge, type PlayerMetrics } from './metrics';
+import { meanSaScore, probeReviews, probeScoresFromEvents, type ProbeReview } from './probe';
 import type { EngineEvent } from './types';
 
 /**
@@ -575,6 +576,9 @@ export interface PlayerSummary extends PlayerMetrics {
   meanConfidence: number | null;
   /** Percent of scored decisions that were correct. */
   accuracy: number | null;
+  /** Situation-awareness probes scored for this trainee and their mean score (0..100). */
+  probeCount: number;
+  saScore: number | null;
 }
 
 export interface AarAnalysis {
@@ -585,11 +589,14 @@ export interface AarAnalysis {
   flow: FlowEdge[];
   timeline: TimelineItem[];
   learning: LearningPoint[];
+  /** Situation-awareness probes (SAGAT), in time order, with each trainee's answers and the truth. */
+  probes: ProbeReview[];
 }
 
 export function analyzeExercise(input: AarInput): AarAnalysis {
   const records = input.decisions.map(toRecord);
   const m = computeMetrics(input.events, records).players;
+  const scoredProbes = probeScoresFromEvents(input.events);
   const players: PlayerSummary[] = input.players.map((p) => {
     const base: PlayerMetrics = m[p.id] ?? {
       playerId: p.id,
@@ -607,6 +614,8 @@ export function analyzeExercise(input: AarInput): AarAnalysis {
     const spoof = spoofChallenge(input.events, p.id);
     return {
       ...base,
+      probeCount: scoredProbes.filter((s) => s.playerId === p.id).length,
+      saScore: meanSaScore(input.events, p.id),
       spoofsReceived: spoof.received,
       spoofsChallenged: spoof.challenged,
       spoofsChallengedPct: spoof.pct,
@@ -630,5 +639,6 @@ export function analyzeExercise(input: AarInput): AarAnalysis {
     flow: messageFlow(input),
     timeline: keyTimeline(input),
     learning: learningPoints(input),
+    probes: probeReviews(input.events),
   };
 }

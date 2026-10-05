@@ -91,6 +91,9 @@ const m = {
   gradingAccuracy: null,
   channelSwitchCount: 0,
   spoofActedCount: 0,
+  probeCount: 0,
+  lastSaScore: null,
+  saScore: null,
   lastDecision: null,
 };
 const drift = { missed: 1, ghost: 0, avgPositionErrorM: 100, friendlyAvgErrorM: 0 };

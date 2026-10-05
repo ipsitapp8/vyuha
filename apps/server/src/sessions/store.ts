@@ -72,6 +72,7 @@ export interface SessionMetricRow {
   brierScore: number | null;
   spoofsChallengedPct: number | null;
   reportGradingAccuracy: number | null;
+  saScore: number | null;
 }
 
 export type UserProgressRow = SessionMetricRow & { code: string; scenarioTitle: string };

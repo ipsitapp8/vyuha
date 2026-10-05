@@ -175,6 +175,8 @@ model SessionMetric {
   brierScore            Float?
   spoofsChallengedPct   Float?
   reportGradingAccuracy Float?
+  /// Mean situation-awareness probe score (0..100).
+  saScore               Float?
 
   @@unique([sessionId, userId])
   @@index([userId, endedAt])

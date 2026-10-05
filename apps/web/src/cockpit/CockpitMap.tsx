@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl';
+import { Map as MapLibreMap, Marker, NavigationControl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@/lib/maplibre';
 import { useTranslation } from 'react-i18next';
 import { attachBasemap, INITIAL_STYLE } from '@/lib/basemap';
 import type { AreaBounds, LatLon, PerceivedStateDto } from '@vyuha/shared';
 import { EMPTY_LINE, MarkerLayer } from './markers';
+import type { ProbeMarker } from './probe';
 
 interface Props {
   bounds: AreaBounds;
@@ -105,6 +106,24 @@ export function CockpitMap({
   useEffect(() => {
     layerRef.current?.sync(perceived, picture, selectedContactId, t);
   }, [perceived, picture, selectedContactId, t]);
+
+  // The trainee's own probe answers: plain markers that come and go with the draft.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !probeMarkers || probeMarkers.length === 0) return;
+    const placed = probeMarkers.map((m) => {
+      const el = document.createElement('div');
+      el.className = `vy-marker vy-probe vy-probe-${m.kind}`;
+      el.innerHTML = '<span class="vy-dot"></span><span class="vy-label"></span>';
+      const label = el.querySelector('.vy-label');
+      if (label) label.textContent = m.label;
+      el.setAttribute('aria-label', m.label);
+      return new Marker({ element: el }).setLngLat([m.position.lon, m.position.lat]).addTo(map);
+    });
+    return () => {
+      for (const m of placed) m.remove();
+    };
+  }, [probeMarkers]);
 
   return (
     <div

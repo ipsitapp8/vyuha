@@ -226,7 +226,7 @@ export function registerSessionRoutes(
     }),
   );
 
-  const control = (name: 'start' | 'pause' | 'resume' | 'end'): void => {
+  const control = (name: 'start' | 'pause' | 'resume' | 'end' | 'probe'): void => {
     app.post(
       `/sessions/:id/${name}`,
       instructor,
@@ -241,6 +241,8 @@ export function registerSessionRoutes(
   control('pause');
   control('resume');
   control('end');
+  // Freeze and probe: opens a situation-awareness probe and pauses the exercise.
+  control('probe');
 
   app.post(
     '/sessions/:id/speed',

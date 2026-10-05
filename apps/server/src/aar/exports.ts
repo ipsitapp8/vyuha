@@ -58,12 +58,77 @@ export function decisionsCsv(summary: AarSummary): string {
   return `${[header.join(','), ...rows].join('\r\n')}\r\n`;
 }
 
+/**
+ * One row per trainee per situation-awareness probe. It follows the decisions in the same file, after
+ * a blank line and its own header, so one download carries both tables.
+ */
+export function probesCsv(summary: AarSummary): string {
+  const names = new Map(summary.meta.players.map((p) => [p.id, p]));
+  const header = [
+    'session_code',
+    'probe_tick',
+    'probe_time',
+    'trainee',
+    'role',
+    'answered',
+    'sa_score',
+    'contacts_found',
+    'contacts_missed',
+    'ghost_markers',
+    'avg_contact_error_m',
+    'avg_teammate_error_m',
+    'jammed_channel_answer',
+    'jammed_channel_truth',
+    'channel_correct',
+  ];
+  const rows = summary.analysis.probes.flatMap((probe) =>
+    probe.results.map((r) => {
+      const p = names.get(r.playerId);
+      return [
+        summary.meta.code,
+        probe.tick,
+        formatClock(probe.tick),
+        p?.name ?? r.playerId,
+        p?.role ?? '',
+        r.answered,
+        r.score,
+        r.matched.length,
+        r.missedUnitIds.length,
+        r.ghostCount,
+        r.avgContactErrorM,
+        r.avgTeammateErrorM,
+        r.answer?.jammedChannel ?? null,
+        r.truth.jammedChannel,
+        r.channelCorrect,
+      ]
+        .map(csvCell)
+        .join(',');
+    }),
+  );
+  return `${[header.join(','), ...rows].join('\r\n')}\r\n`;
+}
+
+/** The decisions table and, when probes were run, the situation-awareness table under it. */
+export function aarCsv(summary: AarSummary): string {
+  const decisions = decisionsCsv(summary);
+  return summary.analysis.probes.length === 0 ? decisions : `${decisions}\r\n${probesCsv(summary)}`;
+}
+
 /** The complete record of the exercise: metadata, roster, every event, and the decisions. */
 export function fullLogJson(summary: AarSummary, events: readonly EventRow[]): unknown {
   return {
     format: 'vyuha-aar/1',
     meta: summary.meta,
     decisions: summary.decisions,
+    situationAwareness: {
+      probes: summary.analysis.probes,
+      scores: summary.analysis.players.map((p) => ({
+        playerId: p.playerId,
+        name: p.name,
+        probeCount: p.probeCount,
+        saScore: p.saScore,
+      })),
+    },
     eventCount: events.length,
     events: events.map((e) => ({
       tick: e.tick,

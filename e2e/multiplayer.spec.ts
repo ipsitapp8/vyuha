@@ -114,6 +114,23 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
     instructorPage.getByRole('region', { name: /ground truth|truth/i }).first(),
   ).toBeVisible();
 
+  // ---- freeze and probe (SAGAT): the instructor freezes, a trainee answers from memory ----
+  await instructorPage.getByRole('button', { name: 'Freeze & Probe' }).click();
+  await expect(instructorPage.getByText(/Situation check open: 0 of 3 answered/)).toBeVisible();
+  const check = section.getByRole('region', { name: 'Situation check' });
+  await expect(check).toBeVisible();
+  await expect(section.getByText('EXERCISE FROZEN: SITUATION CHECK')).toBeVisible();
+  // the picture is hidden while answering, and no truth is on the page
+  expect(await section.locator('body').innerText()).not.toMatch(/r-recce|r-mech|out of 100/);
+  await section.getByRole('application').click({ position: { x: 300, y: 200 } });
+  await expect(check.getByText(/Contact 1/)).toBeVisible();
+  await check.getByLabel('Jammed channel').selectOption('NONE');
+  await check.getByRole('button', { name: 'Send my answers' }).click();
+  await expect(section.getByText(/Answers sent/)).toBeVisible();
+  await instructorPage.getByRole('button', { name: 'Resume' }).click();
+  await expect(instructorPage.getByText(/Situation check open: 1 of 3 answered/)).toBeVisible();
+  await expect(section.getByRole('tablist', { name: 'Cockpit panels' })).toBeVisible();
+
   // ---- the scripted spoofed order reaches the section commander at 04:00 exercise time ----
   await expect(section.getByRole('region', { name: 'Order alerts' })).toBeVisible({
     timeout: 120_000,
@@ -134,6 +151,13 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
   await expect(
     instructorPage.getByText(/Acted on an order that had not been authenticated/),
   ).toBeVisible();
+
+  // the probe is in the review, and the trainee now sees their own score
+  const probes = instructorPage.getByRole('region', { name: 'Situation awareness probes' });
+  await expect(probes.getByLabel('Situation awareness score')).toBeVisible();
+  await expect(probes.getByRole('application', { name: /Probe map/ })).toBeVisible();
+  await expect(section.getByRole('region', { name: 'Your situation awareness' })).toBeVisible();
+  await expect(section.getByText(/Average score: \d+ out of 100/)).toBeVisible();
 
   const [download] = await Promise.all([
     instructorPage.waitForEvent('download'),

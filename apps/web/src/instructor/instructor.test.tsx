@@ -369,6 +369,9 @@ describe('TraineeCards', () => {
     gradingAccuracy: null,
     channelSwitchCount: 0,
     spoofActedCount: 0,
+    probeCount: 0,
+    lastSaScore: null,
+    saScore: null,
     lastDecision: null,
     ...over,
   });

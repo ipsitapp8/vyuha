@@ -219,6 +219,9 @@ export type EngineInput =
       targetContactId?: string;
       basedOnMessageId?: string;
     }
+  | ({ type: 'PROBE_ANSWER'; playerId: string; probeId: string } & ProbeAnswer)
+  | { type: 'PROBE_START'; probeId: string }
+  | { type: 'PROBE_CLOSE' }
   | { type: 'INJECT'; inject: Inject }
   | { type: 'SET_JAMMING'; channel: Channel; intensity: number }
   | { type: 'MSEL_ADD'; inject: Inject }
@@ -303,6 +306,8 @@ export interface PerceivedState {
     signal: Record<Channel, number | null>;
   };
   weather: Weather;
+  /** A situation-awareness probe this player has still to answer (no truth, only its id and times). */
+  probe: { id: string; tick: number; expiresAtTick: number } | null;
 }
 
 export interface PictureDrift {

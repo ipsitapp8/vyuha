@@ -31,6 +31,8 @@ export class LiveMetrics {
   private decisions: DecisionRecord[] = [];
   private events: EngineEvent[] = [];
   private readonly last = new Map<string, LastDecision>();
+  /** Situation-awareness probe scores per trainee, in the order they were scored. */
+  private readonly sa = new Map<string, number[]>();
 
   ingest(batch: readonly EngineEvent[]): void {
     for (const e of batch) {
@@ -45,6 +47,11 @@ export class LiveMetrics {
           outcome: d.outcome,
           rationale: typeof e.payload['rationale'] === 'string' ? e.payload['rationale'] : '',
         });
+      } else if (e.type === 'PROBE_SCORED') {
+        const id = e.payload['playerId'];
+        const score = e.payload['score'];
+        if (typeof id === 'string' && typeof score === 'number')
+          this.sa.set(id, [...(this.sa.get(id) ?? []), score]);
       } else if (METRIC_EVENT_TYPES.has(e.type)) {
         this.events.push(e);
       }
@@ -74,7 +81,11 @@ export class LiveMetrics {
     for (const id of playerIds) {
       const p = m.players[id];
       const scored = this.decisions.filter((d) => d.playerId === id && d.outcome !== null);
+      const sa = this.sa.get(id) ?? [];
       out[id] = {
+        probeCount: sa.length,
+        lastSaScore: sa.at(-1) ?? null,
+        saScore: sa.length ? Math.round(sa.reduce((a, b) => a + b, 0) / sa.length) : null,
         decisionCount: p?.decisionCount ?? 0,
         scoredDecisionCount: p?.scoredDecisionCount ?? 0,
         avgLatencyTicks: p?.avgLatencyTicks ?? null,

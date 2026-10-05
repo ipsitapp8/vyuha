@@ -111,6 +111,16 @@ export function TraineeCards({ lobby, truth, watchedId, onWatch }: Props) {
                 <dd>
                   {m.gradingAccuracy === null ? '–' : `${Math.round(m.gradingAccuracy * 100)}%`}
                 </dd>
+                <dt className="text-muted-foreground">{t('god.cards.sa')}</dt>
+                <dd>
+                  {m.lastSaScore === null
+                    ? '–'
+                    : t('god.cards.saLine', {
+                        last: Math.round(m.lastSaScore),
+                        mean: Math.round(m.saScore ?? m.lastSaScore),
+                        count: m.probeCount,
+                      })}
+                </dd>
               </dl>
 
               <p className="mt-3 text-xs uppercase tracking-wide text-muted-foreground">

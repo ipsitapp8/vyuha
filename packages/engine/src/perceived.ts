@@ -101,7 +101,13 @@ export function computePerceivedState(truth: TruthState, playerId: string): Perc
       signal: measureSignal(truth, playerId),
     },
     weather: { ...truth.weather },
+    probe: openProbeFor(truth, playerId),
   };
+}
+
+function openProbeFor(truth: TruthState, playerId: string): PerceivedState['probe'] {
+  const probe = truth.probes.find((p) => p.pending.includes(playerId));
+  return probe ? { id: probe.id, tick: probe.tick, expiresAtTick: probe.expiresAtTick } : null;
 }
 
 /** What the player's radios would show: link quality towards the team lead (or a teammate). */

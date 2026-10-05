@@ -1,5 +1,6 @@
 import { computeMetrics, spoofChallenge } from './metrics';
 import { jamAt, jamSteps } from './aar';
+import { meanSaScore } from './probe';
 import type { DecisionRecord, EngineEvent } from './types';
 
 /** One engine tick is one second of exercise time. */
@@ -17,6 +18,8 @@ export interface ProgressMetrics {
   spoofsChallengedPct: number | null;
   /** Admiralty grading accuracy, 0..1. */
   reportGradingAccuracy: number | null;
+  /** Mean situation-awareness probe score, 0..100. */
+  saScore: number | null;
 }
 
 export const PROGRESS_METRIC_KEYS = [
@@ -25,6 +28,7 @@ export const PROGRESS_METRIC_KEYS = [
   'brierScore',
   'spoofsChallengedPct',
   'reportGradingAccuracy',
+  'saScore',
 ] as const;
 export type ProgressMetricKey = (typeof PROGRESS_METRIC_KEYS)[number];
 
@@ -67,6 +71,7 @@ export function computeProgressMetrics(
       brierScore: m?.brierScore ?? null,
       spoofsChallengedPct: spoofChallenge(events, playerId).pct,
       reportGradingAccuracy: m?.gradingAccuracy ?? null,
+      saScore: meanSaScore(events, playerId),
     };
   }
   return out;

@@ -163,7 +163,7 @@ export const api = {
   },
   sessionControl(
     sessionId: string,
-    action: 'start' | 'pause' | 'resume' | 'end',
+    action: 'start' | 'pause' | 'resume' | 'end' | 'probe',
   ): Promise<LobbyView> {
     return request(`/sessions/${sessionId}/${action}`, lobbyViewSchema, { method: 'POST' });
   },

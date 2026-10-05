@@ -47,6 +47,9 @@ const playerSummarySchema = z.object({
   spoofsChallengedPct: z.number().nullable(),
   meanConfidence: z.number().nullable(),
   accuracy: z.number().nullable(),
+  probeCount: z.number().int(),
+  /** Mean situation-awareness probe score, 0..100; null when no probe was run. */
+  saScore: z.number().nullable(),
   drift: z
     .object({
       samples: z.number().int(),
@@ -64,6 +67,67 @@ const outcomesSchema = z.object({
   DROPPED: z.number().int(),
   CORRUPTED: z.number().int(),
 });
+
+const probeChannel = z.union([channelSchema, z.literal('NONE')]);
+
+/** One trainee's result for one situation-awareness probe: their answers beside the frozen truth. */
+export const probeScoreSchema = z.object({
+  probeId: z.string(),
+  probeTick: z.number().int(),
+  playerId: z.string(),
+  answered: z.boolean(),
+  score: z.number(),
+  contactScore: z.number(),
+  teammateScore: z.number(),
+  channelCorrect: z.boolean(),
+  matched: z.array(z.object({ unitId: z.string(), marker: z.number().int(), errorM: z.number() })),
+  missedUnitIds: z.array(z.string()),
+  ghostCount: z.number().int(),
+  avgContactErrorM: z.number().nullable(),
+  teammateErrors: z.array(z.object({ unitId: z.string(), errorM: z.number().nullable() })),
+  avgTeammateErrorM: z.number().nullable(),
+  answer: z
+    .object({
+      contacts: z.array(latLonSchema),
+      teammates: z.array(z.object({ unitId: z.string(), position: latLonSchema })),
+      jammedChannel: probeChannel,
+    })
+    .nullable(),
+  truth: z.object({
+    hostiles: z.array(z.object({ unitId: z.string(), type: z.string(), position: latLonSchema })),
+    teammates: z.array(z.object({ unitId: z.string(), position: latLonSchema })),
+    jammedChannel: probeChannel,
+  }),
+});
+export type ProbeScoreDto = z.infer<typeof probeScoreSchema>;
+
+export const probeReviewSchema = z.object({
+  probeId: z.string(),
+  tick: z.number().int(),
+  results: z.array(probeScoreSchema),
+});
+export type ProbeReviewDto = z.infer<typeof probeReviewSchema>;
+
+/** What a trainee may see of their own probes once the exercise has ended: scores, never the truth. */
+export const mySaScoresResponseSchema = z.object({
+  probes: z.array(
+    z.object({
+      probeId: z.string(),
+      tick: z.number().int(),
+      answered: z.boolean(),
+      score: z.number(),
+      channelCorrect: z.boolean(),
+      contactsFound: z.number().int(),
+      contactsMissed: z.number().int(),
+      ghostCount: z.number().int(),
+      avgContactErrorM: z.number().nullable(),
+      avgTeammateErrorM: z.number().nullable(),
+    }),
+  ),
+  /** Mean over the probes, 0..100; null when there were none. */
+  saScore: z.number().nullable(),
+});
+export type MySaScoresResponse = z.infer<typeof mySaScoresResponseSchema>;
 
 export const learningPointSchema = z.object({
   rule: z.string(),
@@ -153,6 +217,7 @@ export const aarSummarySchema = z.object({
     ),
     timeline: z.array(timelineItemSchema),
     learning: z.array(learningPointSchema),
+    probes: z.array(probeReviewSchema),
   }),
 });
 export type AarSummary = z.infer<typeof aarSummarySchema>;
