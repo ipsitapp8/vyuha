@@ -18,7 +18,7 @@ export function LandingPage() {
             style={{
               backgroundImage: `url(${import.meta.env.BASE_URL}hero-army.jpg)`,
               backgroundSize: 'cover',
-              backgroundPosition: 'right 25%',
+              backgroundPosition: 'right 62%',
               backgroundRepeat: 'no-repeat',
             }}
           />
