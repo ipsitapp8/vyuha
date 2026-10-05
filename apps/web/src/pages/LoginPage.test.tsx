@@ -132,6 +132,18 @@ describe('two sign-in options', () => {
     ).toHaveAttribute('href', '/login/trainee');
   });
 
+  it('drops the old server message when the next attempt fails the form checks', async () => {
+    login.mockRejectedValue(new ApiRequestError('no', 403, 'FORBIDDEN'));
+    app('/login/instructor');
+    await fill('t@x.io', 'Vyuha@123');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText('Email'));
+    await userEvent.clear(screen.getByLabelText('Password'));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByText('Password is required')).toBeInTheDocument();
+    expect(screen.queryByText(/not an instructor account/)).not.toBeInTheDocument();
+  });
+
   it('shows the normal message for a wrong password', async () => {
     login.mockRejectedValue(new ApiRequestError('bad', 401, 'INVALID_CREDENTIALS'));
     app('/login/trainee');

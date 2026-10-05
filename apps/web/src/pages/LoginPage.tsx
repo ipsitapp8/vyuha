@@ -32,19 +32,24 @@ export function LoginPage({ portal }: { portal: Role }) {
     formState: { errors, isSubmitting },
   } = useForm<LoginBody>({ resolver: zodResolver(loginBodySchema) });
 
-  const onSubmit = handleSubmit(async (values) => {
-    setSubmitError(null);
-    try {
-      const user = await login({ ...values, portal });
-      navigate(homePathFor(user.role), { replace: true });
-    } catch (err) {
-      setSubmitError(
-        err instanceof ApiRequestError && err.status === 403
-          ? t(`auth.portal.${portal}.wrongAccount`)
-          : apiErrorText(t, err),
-      );
-    }
-  });
+  // A submit that fails the form's own checks drops the previous server message so it never sits beside
+  // the new field errors.
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setSubmitError(null);
+      try {
+        const user = await login({ ...values, portal });
+        navigate(homePathFor(user.role), { replace: true });
+      } catch (err) {
+        setSubmitError(
+          err instanceof ApiRequestError && err.status === 403
+            ? t(`auth.portal.${portal}.wrongAccount`)
+            : apiErrorText(t, err),
+        );
+      }
+    },
+    () => setSubmitError(null),
+  );
 
   const other = OTHER_PORTAL[portal];
   return (
