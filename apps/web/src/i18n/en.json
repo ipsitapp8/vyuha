@@ -331,6 +331,56 @@
     "degradation": {
       "jammed": "JAMMED",
       "frozen": "PICTURE FROZEN"
+    },
+    "probe": {
+      "title": "Situation check",
+      "banner": "EXERCISE FROZEN: SITUATION CHECK",
+      "intro": "The exercise is frozen and your picture is hidden. Answer from memory. Your score is shown after the exercise.",
+      "q1": "1. Where are the hostile contacts?",
+      "q1Help": "Click the map once for each hostile contact you believe is out there.",
+      "markContacts": "Mark hostile contacts",
+      "noContacts": "No contact marked. Leave it empty if you believe nothing is out there.",
+      "marked": "Contacts you marked",
+      "contactN": "Contact {{n}}",
+      "removeContact": "Remove contact {{n}}",
+      "q2": "2. Where are your teammates?",
+      "noTeammates": "You have no teammates in this exercise.",
+      "notPlaced": "Not placed",
+      "place": "Place {{name}}",
+      "clickMap": "Click the map…",
+      "q3": "3. Which channel is being jammed right now?",
+      "q3Label": "Jammed channel",
+      "choose": "Choose an answer",
+      "none": "None",
+      "submit": "Send my answers",
+      "sending": "Sending…",
+      "needChannel": "Answer question 3 to send.",
+      "sent": "Answers sent. Wait for the instructor to resume the exercise.",
+      "hintContact": "Click the map to mark a hostile contact.",
+      "hintTeammate": "Click the map where you believe {{name}} is."
+    },
+    "sa": {
+      "title": "Your situation awareness",
+      "loadFailed": "Could not load your scores.",
+      "none": "No situation check was run in this exercise.",
+      "mean": "Average score: {{score}} out of 100.",
+      "time": "Time",
+      "score": "Score",
+      "found": "Hostiles found",
+      "missed": "Missed",
+      "ghosts": "Ghost markers",
+      "channel": "Jammed channel",
+      "right": "Right",
+      "wrong": "Wrong",
+      "notAnswered": "0 (no answer)",
+      "help": "Each check compared where you believed units were, and which channel was jammed, with the ground truth at that moment."
+    },
+    "audio": {
+      "label": "Radio audio",
+      "on": "Radio audio on",
+      "off": "Radio audio off",
+      "volume": "Volume",
+      "unavailable": "Radio audio is not available in this browser."
     }
   },
   "reasons": {
@@ -348,7 +398,11 @@
     "alreadyChannel": "already on that channel",
     "confidenceRange": "confidence must be 0-100",
     "rationaleShort": "rationale must be at least 10 characters",
-    "unknownMessage": "unknown message"
+    "unknownMessage": "unknown message",
+    "probeClosed": "that situation check is closed",
+    "probeAnswered": "you have already answered this situation check",
+    "invalidPosition": "invalid position",
+    "baselineRun": "not available in a baseline run"
   },
   "instructor": {
     "home": {
@@ -378,7 +432,8 @@
         "status": "Status",
         "trainees": "Trainees",
         "actions": "Actions"
-      }
+      },
+      "baselineTag": "Baseline"
     },
     "scenario": {
       "back": "← All scenarios",
@@ -434,7 +489,8 @@
       "players": "{{count}} players",
       "deleteTeam": "Delete team",
       "start": "Start exercise",
-      "startHelp": "Starting locks teams, roles and units. Every trainee needs a team, role and unit, and every team a platoon commander (PL_CDR)."
+      "startHelp": "Starting locks teams, roles and units. Every trainee needs a team, role and unit, and every team a platoon commander (PL_CDR).",
+      "baseline": "Baseline run: every degradation is switched off. Trainees join with this new code."
     },
     "controls": {
       "label": "Exercise controls",
@@ -442,7 +498,11 @@
       "resume": "Resume",
       "end": "End exercise",
       "speed": "Speed",
-      "ended": "The exercise has ended."
+      "ended": "The exercise has ended.",
+      "probe": "Freeze & Probe",
+      "probeHelp": "Pauses the exercise and asks every trainee where they believe contacts and teammates are and which channel is jammed.",
+      "probeOpen": "Situation check open: {{answered}} of {{total}} answered. Resume when ready.",
+      "baseline": "Baseline run: no jamming, delay, dropout or spoofs"
     },
     "maps": {
       "truth": "Ground truth",
@@ -492,7 +552,10 @@
       "weather": "Weather change",
       "fire": "Fire inject now",
       "sent": "Inject sent: trainees see it on the next tick.",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "gps": "Spoof UAV GPS",
+      "c2": "Compromise C2 node",
+      "baselineOff": "Degrading injects are switched off in a baseline run."
     },
     "degrade": {
       "title": "Channel degradation",
@@ -788,7 +851,79 @@
       "UAV_SPOOF_ACTED": "{{name}} acted on spoofed UAV data (contact {{contact}})"
     },
     "openReview": "Open after action review",
-    "review": "Review"
+    "review": "Review",
+    "probes": {
+      "title": "Situation awareness probes",
+      "none": "No freeze probe was run in this exercise.",
+      "intro": "Each freeze asked every trainee where the hostile contacts and their teammates were and which channel was jammed. Solid markers are the truth at that moment, dashed markers are the trainee’s answers.",
+      "probe": "Probe",
+      "probeN": "Probe {{n}} at {{time}}",
+      "score": "Situation awareness score",
+      "mapLabel": "Probe map: the trainee’s answers over the ground truth",
+      "found": "Hostiles found",
+      "foundValue": "{{found}} of {{total}}",
+      "missed": "Missed",
+      "ghosts": "Ghost markers",
+      "contactError": "Average contact error",
+      "teammateError": "Average teammate error",
+      "channel": "Jammed channel",
+      "channelValue": "said {{said}}, was {{truth}}",
+      "notAnswered": "This trainee did not answer the probe: score 0.",
+      "chart": "Situation awareness score over time",
+      "legendHostile": "Hostile, found",
+      "legendMissed": "Hostile, missed",
+      "legendMarked": "Trainee’s marker",
+      "legendGhost": "Ghost marker",
+      "legendTeammate": "Teammate, true position",
+      "legendSaidTeammate": "Teammate, as believed",
+      "map": {
+        "hostile": "Hostile: {{type}}",
+        "missed": "{{type}} (missed)",
+        "teammate": "Teammate: {{name}}",
+        "marked": "Marked {{n}}",
+        "ghost": "Ghost {{n}}",
+        "saidTeammate": "{{name}} (believed)"
+      }
+    },
+    "baseline": {
+      "title": "Clean baseline",
+      "badge": "Baseline run",
+      "isBaseline": "Same scenario and seed with every degradation off: no jamming, no delayed, dropped or garbled messages, no spoofs or outages.",
+      "openDegraded": "Open the degraded run {{code}}",
+      "played": "A baseline run ({{code}}) has been played.",
+      "waiting": "A baseline run ({{code}}) is set up and has not finished yet.",
+      "openReview": "Open its review",
+      "openSession": "Open the baseline session",
+      "offer": "Run the same scenario and seed again with every degradation switched off, then compare the two.",
+      "create": "Create baseline run",
+      "creating": "Creating…",
+      "createFailed": "Could not create the baseline run."
+    },
+    "compare": {
+      "title": "Degraded run against clean baseline",
+      "intro": "The same trainee in both runs: what degraded communications cost in decisions, time and picture accuracy.",
+      "loadFailed": "Could not load the comparison.",
+      "nobodyInBoth": "No trainee played both runs, so there is nothing to compare.",
+      "degraded": "Degraded",
+      "baseline": "Baseline",
+      "metric": "Measure",
+      "cost": "Cost of degradation",
+      "timeline": "Decision timeline",
+      "latency": "Decision latency per decision (s)",
+      "drift": "Picture drift: position error (m)",
+      "runMeta": "run {{code}}, {{duration}} long",
+      "trackLabel": "{{run}} run: {{count}} decisions along the exercise",
+      "noDecisions": "No decisions in this run.",
+      "latencyOf": "after {{seconds}} s",
+      "metrics": {
+        "decisions": "Decisions",
+        "latency": "Average decision latency (s)",
+        "accuracy": "Correct decisions (%)",
+        "brier": "Brier score",
+        "positionError": "Average position error (m)",
+        "missed": "Average hostile units missed"
+      }
+    }
   },
   "errorBoundary": {
     "title": "Something broke on this screen",

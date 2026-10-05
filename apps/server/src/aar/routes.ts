@@ -35,6 +35,13 @@ export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar:
     guarded<Id>(async (request) => aar.summary(request.params.sessionId)),
   );
 
+  /** The degraded run beside its clean baseline twin (either session of the pair). */
+  app.get(
+    '/aar/:sessionId/compare',
+    instructor,
+    guarded<Id>(async (request) => aar.compare(request.params.sessionId)),
+  );
+
   /** Ground truth and a trainee's perception at any tick, rebuilt by deterministic replay. */
   app.get(
     '/aar/:sessionId/snapshot',

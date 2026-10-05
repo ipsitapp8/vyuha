@@ -40,6 +40,8 @@ export class ProgressService {
   private async compute(sessionId: string): Promise<void> {
     const session = await this.store.getSession(sessionId);
     if (session?.status !== 'ENDED') return;
+    // A baseline run has no degradation to perform under: it is for comparison, not for the record.
+    if (session.clean) return;
     const [events, stored, playerRows] = await Promise.all([
       this.store.loadAllEvents(sessionId),
       this.store.listDecisions(sessionId),

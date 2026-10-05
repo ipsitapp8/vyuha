@@ -169,4 +169,15 @@ test('instructor and trainees run a degraded-comms exercise and export the AAR',
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   expect(pdf.length).toBeGreaterThan(10_000);
   expect(download.suggestedFilename()).toBe(`vyuha-aar-${session.code}.pdf`);
+
+  // ---- a clean baseline twin: same scenario and seed, every degradation off ----
+  await instructorPage.getByRole('button', { name: 'Create baseline run' }).click();
+  await instructorPage.waitForURL(/\/instructor\/sessions\//);
+  expect(instructorPage.url()).not.toContain(session.id);
+  await expect(
+    instructorPage.getByText(/Baseline run: every degradation is switched off/),
+  ).toBeVisible();
+  // the team and its PACE plan came across; the trainees join with the new code
+  await expect(instructorPage.getByRole('heading', { name: /Alpha/ })).toBeVisible();
+  await expect(instructorPage.getByText('Trainees (0)')).toBeVisible();
 });

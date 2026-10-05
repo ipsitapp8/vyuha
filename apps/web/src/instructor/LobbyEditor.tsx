@@ -44,6 +44,14 @@ export function LobbyEditor({ lobby, busy, teamName, setTeamName, run }: Props) 
 
   return (
     <>
+      {lobby.session.clean ? (
+        <p
+          role="status"
+          className="mt-6 rounded-md bg-emerald-100 p-3 text-sm font-semibold text-emerald-900"
+        >
+          {t('god.lobby.baseline')}
+        </p>
+      ) : null}
       <section className="mt-6 rounded-lg border border-border bg-secondary p-4">
         <h2 className="mb-1 font-semibold">
           {t('god.lobby.trainees', { count: lobby.players.length })}

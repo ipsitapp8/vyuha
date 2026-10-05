@@ -64,6 +64,15 @@ interface Ctx {
 }
 
 const INSTRUCTOR = 'instructor';
+/** Injects that degrade communications or deceive: a baseline (clean) run leaves them out. */
+export const DEGRADING_INJECTS: ReadonlySet<Inject['type']> = new Set([
+  'JAM_CHANNEL',
+  'SATCOM_OUTAGE',
+  'CONFLICTING_REPORTS',
+  'SPOOF_ORDER',
+  'GPS_SPOOF',
+  'C2_COMPROMISE',
+]);
 const ACTING_ACTIONS = new Set(['COMPLY_ORDER', 'WITHDRAW', 'REPOSITION', 'ENGAGE']);
 
 function emit(ctx: Ctx, type: string, payload: Record<string, unknown>, visibleTo: string[]): void {
@@ -140,6 +149,16 @@ function applyInject(ctx: Ctx, inject: Inject, source: 'MSEL' | 'LIVE'): void {
   const { s } = ctx;
   const fail = (reason: string): void =>
     emit(ctx, 'INJECT_FAILED', { injectId: inject.id, type: inject.type, reason }, [INSTRUCTOR]);
+  if (s.clean && DEGRADING_INJECTS.has(inject.type)) {
+    // The tactical story (adversary moves, runners, weather) still plays; the degradation does not.
+    emit(
+      ctx,
+      'INJECT_SKIPPED',
+      { injectId: inject.id, type: inject.type, title: inject.title, reason: 'baseline run' },
+      [INSTRUCTOR],
+    );
+    return;
+  }
   emit(
     ctx,
     'INJECT_FIRED',
@@ -328,9 +347,11 @@ function transmit(ctx: Ctx, out: Outgoing): void {
   const key = `${out.team.id}|${out.channel}`;
   const already = ctx.tickUsage.get(key) ?? 0;
   ctx.tickUsage.set(key, already + 1);
-  const queueDelay = Math.floor(already / BANDWIDTH_PER_TICK[out.channel]);
+  const queueDelay = s.clean ? 0 : Math.floor(already / BANDWIDTH_PER_TICK[out.channel]);
   const switchDelay =
-    out.team.switchedAtTick !== null && s.tick - out.team.switchedAtTick < SWITCH_PENALTY_TICKS
+    !s.clean &&
+    out.team.switchedAtTick !== null &&
+    s.tick - out.team.switchedAtTick < SWITCH_PENALTY_TICKS
       ? SWITCH_EXTRA_DELAY_TICKS
       : 0;
 
@@ -345,6 +366,17 @@ function transmit(ctx: Ctx, out: Outgoing): void {
     },
     { terrain: s.terrain, weather: s.weather, jamming: currentJamming(s), satcomUp: satcomUp(s) },
   );
+  // Baseline run: every message arrives intact after the channel's own latency (a runner still walks).
+  const result: typeof drawn =
+    s.clean && out.channel !== 'RUNNER'
+      ? {
+          ...drawn,
+          outcome: 'DELIVERED',
+          quality: 1,
+          jamming: 0,
+          delayTicks: BASE_LATENCY_TICKS[out.channel],
+        }
+      : drawn;
 
   let text = out.text;
   let position = out.position;
@@ -715,7 +747,7 @@ function moveRunners(ctx: Ctx): void {
 function adaptEw(ctx: Ctx): void {
   const { s } = ctx;
   if (s.tick % ADAPT_INTERVAL_TICKS !== 0) return;
-  if (adversaryActive(s)) {
+  if (adversaryActive(s) && !s.clean) {
     s.adaptiveJam = adaptJamming(s.adaptiveJam, s.teams);
     emit(
       ctx,
@@ -893,6 +925,7 @@ function applyInput(ctx: Ctx, input: EngineInput): void {
     return applyInject(ctx, input.inject, 'LIVE');
   }
   if (input.type === 'SET_JAMMING') {
+    if (s.clean) return reject(ctx, null, input.type, 'not available in a baseline run');
     if (input.channel === 'RUNNER') return reject(ctx, null, input.type, 'RUNNER cannot be jammed');
     s.manualJam[input.channel] = clamp(input.intensity, 0, 1);
     emit(ctx, 'JAMMING_SET', { channel: input.channel, intensity: s.manualJam[input.channel] }, [

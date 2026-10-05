@@ -196,7 +196,14 @@ export function InstructorHome() {
                       key={row.id}
                       className="border-t border-border odd:bg-background even:bg-secondary"
                     >
-                      <td className="p-2 font-semibold">{row.scenarioTitle}</td>
+                      <td className="p-2 font-semibold">
+                        {scenarioTitle(t, row.scenarioTitle)}
+                        {row.clean ? (
+                          <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-semibold text-emerald-900">
+                            {t('instructor.home.baselineTag')}
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="p-2 font-mono text-primary">{row.code}</td>
                       <td className="p-2">
                         <span

@@ -250,6 +250,15 @@ export interface TruthState {
   inFlight: InFlight[];
   runners: Runner[];
   knowledge: Record<string, PlayerKnowledge>;
+  /** Situation-awareness probes still waiting for answers. */
+  probes: ProbeState[];
+  gpsSpoofs: GpsSpoof[];
+  c2Compromises: C2Compromise[];
+  /**
+   * Baseline run: the same scenario and seed with every degradation switched off (no jamming, no
+   * delay, dropout or corruption, no spoofs, no outages), to compare against the degraded run.
+   */
+  clean: boolean;
   counters: { message: number; report: number; runner: number; group: number; liveInject: number };
 }
 

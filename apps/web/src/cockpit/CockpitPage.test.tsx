@@ -56,6 +56,8 @@ const lobby: LobbyView = {
     scenarioTitle: 'Op Silent Ridge',
     areaBounds: { south: 34.08, west: 77.45, north: 34.26, east: 77.7 },
     createdAt: '2026-01-01T00:00:00Z',
+    clean: false,
+    baselineOfId: null,
   },
   teams: [
     {

@@ -1,7 +1,9 @@
 import { analyzeExercise, createTruthState, type AarDecision, type Roster } from '@vyuha/engine';
 import {
+  aarCompareSchema,
   aarDecisionDetailSchema,
   aarSummarySchema,
+  type AarCompare,
   perceivedStateSchema,
   type AarDecisionDetail,
   type AarSnapshot,
@@ -28,6 +30,8 @@ const decisionPayloadSchema = z.object({
 });
 
 interface AarData {
+  /** Account of each player, to match the same trainee across a degraded run and its baseline. */
+  userOf: Map<string, string>;
   summary: AarSummary;
   events: EventRow[];
   stored: StoredDecision[];
@@ -160,13 +164,19 @@ export class AarService {
         teams,
         players,
         scenarioId: session.scenarioId,
+        clean: session.clean,
+        baselineOfId: session.baselineOfId,
+        // filled in per request: a baseline can be created after this analysis was cached
+        twin: null,
         areaBounds: p.scenario.areaBounds,
       },
       decisions,
       analysis,
     });
 
-    const initial = createTruthState(p.scenario, p.terrain, p.weather, p.seed, p.roster as Roster);
+    const initial = createTruthState(p.scenario, p.terrain, p.weather, p.seed, p.roster as Roster, {
+      clean: p.clean,
+    });
     return {
       userOf: new Map(playerRows.map((r) => [r.id, r.userId])),
       summary,
@@ -176,8 +186,84 @@ export class AarService {
     };
   }
 
+  /** A baseline's source; or, for a degraded run, its newest baseline (an ended one if there is one). */
+  private async twinOf(
+    session: SessionRow,
+  ): Promise<{ sessionId: string; code: string; status: SessionRow['status'] } | null> {
+    let twin: SessionRow | null = null;
+    if (session.baselineOfId) {
+      twin = await this.store.getSession(session.baselineOfId);
+    } else {
+      const baselines = (await this.store.listSessions())
+        .filter((s) => s.baselineOfId === session.id)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      twin = baselines.find((s) => s.status === 'ENDED') ?? baselines[0] ?? null;
+    }
+    return twin ? { sessionId: twin.id, code: twin.code, status: twin.status } : null;
+  }
+
+  /**
+   * The degraded exercise beside its clean baseline: decisions, latency and picture drift for both, and
+   * the trainees who played both. Works from either session of the pair.
+   */
+  async compare(sessionId: string): Promise<AarCompare> {
+    const here = await this.data(sessionId);
+    const twin = (await this.summary(sessionId)).meta.twin;
+    if (!twin) {
+      throw new HttpError(404, 'NOT_FOUND', 'This exercise has no baseline run to compare with');
+    }
+    if (twin.status !== 'ENDED') {
+      throw new HttpError(409, 'SESSION_STATE', 'The other run of this pair has not ended yet');
+    }
+    const there = await this.data(twin.sessionId);
+    const [degraded, baseline] = here.summary.meta.clean ? [there, here] : [here, there];
+    const side = (d: AarData): AarCompare['degraded'] => ({
+      sessionId: d.summary.meta.sessionId,
+      code: d.summary.meta.code,
+      durationTicks: d.summary.meta.durationTicks,
+      decisions: d.summary.decisions,
+      drift: d.summary.analysis.drift,
+      players: d.summary.analysis.players.map((p) => ({
+        playerId: p.playerId,
+        userId: d.userOf.get(p.playerId) ?? '',
+        name: p.name,
+        decisionCount: p.decisionCount,
+        avgLatencyTicks: p.avgLatencyTicks,
+        accuracy: p.accuracy,
+        brierScore: p.brierScore,
+        meanPositionErrorM: p.drift?.meanPositionErrorM ?? null,
+        meanMissed: p.drift?.meanMissed ?? null,
+      })),
+    });
+    const a = side(degraded);
+    const b = side(baseline);
+    return aarCompareSchema.parse({
+      scenarioTitle: degraded.summary.meta.scenarioTitle,
+      degraded: a,
+      baseline: b,
+      trainees: a.players.flatMap((p) => {
+        const same = b.players.find((q) => q.userId !== '' && q.userId === p.userId);
+        return same
+          ? [
+              {
+                userId: p.userId,
+                name: p.name,
+                degradedPlayerId: p.playerId,
+                baselinePlayerId: same.playerId,
+              },
+            ]
+          : [];
+      }),
+    });
+  }
+
   async summary(sessionId: string): Promise<AarSummary> {
-    return (await this.data(sessionId)).summary;
+    const { summary } = await this.data(sessionId);
+    const session = await this.store.getSession(sessionId);
+    return {
+      ...summary,
+      meta: { ...summary.meta, twin: session ? await this.twinOf(session) : null },
+    };
   }
 
   /** Ground truth and (optionally) one trainee's perception at any tick, rebuilt by deterministic replay. */

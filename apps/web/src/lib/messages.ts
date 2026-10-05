@@ -54,6 +54,10 @@ const REASON_KEYS = {
   'confidence must be 0-100': 'reasons.confidenceRange',
   'rationale must be at least 10 characters': 'reasons.rationaleShort',
   'unknown message': 'reasons.unknownMessage',
+  'that probe is closed': 'reasons.probeClosed',
+  'you have already answered this probe': 'reasons.probeAnswered',
+  'invalid position': 'reasons.invalidPosition',
+  'not available in a baseline run': 'reasons.baselineRun',
 } as const;
 
 /** The engine refuses actions with short English reasons; translate the ones we know. */

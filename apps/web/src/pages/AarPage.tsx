@@ -5,6 +5,7 @@ import { Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AarSummary } from '@vyuha/shared';
 import { AarCharts } from '@/aar/AarCharts';
+import { BaselineCompare } from '@/aar/BaselineCompare';
 import { FlowGraph } from '@/aar/FlowGraph';
 import { GhostReplay } from '@/aar/GhostReplay';
 import { KeyEvents, LearningList } from '@/aar/LearningPoints';
@@ -79,6 +80,20 @@ function Review({ summary }: { summary: AarSummary }) {
   const { t } = useTranslation();
   const { meta, analysis } = summary;
   const bots = new Set(meta.players.filter((p) => p.isDemoBot).map((p) => p.id));
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
+  const [baselineError, setBaselineError] = useState<string | null>(null);
+  const createBaseline = async (): Promise<void> => {
+    setCreating(true);
+    setBaselineError(null);
+    try {
+      const twin = await api.createBaseline(meta.sessionId);
+      navigate(`/instructor/sessions/${twin.session.id}`);
+    } catch (e) {
+      setBaselineError(apiErrorText(t, e, t('aar.baseline.createFailed')));
+      setCreating(false);
+    }
+  };
   return (
     <div className="mt-2 flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -104,6 +119,58 @@ function Review({ summary }: { summary: AarSummary }) {
           ))}
         </nav>
       </header>
+
+      <section
+        className="rounded-lg border border-border bg-secondary p-4"
+        aria-label={t('aar.baseline.title')}
+      >
+        <h2 className="mb-1 font-semibold">{t('aar.baseline.title')}</h2>
+        {meta.clean ? (
+          <p className="text-sm">
+            <span className="mr-2 rounded bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-900">
+              {t('aar.baseline.badge')}
+            </span>
+            {t('aar.baseline.isBaseline')}{' '}
+            {meta.twin ? (
+              <Link className="text-primary underline" to={`/aar/${meta.twin.sessionId}`}>
+                {t('aar.baseline.openDegraded', { code: meta.twin.code })}
+              </Link>
+            ) : null}
+          </p>
+        ) : meta.twin ? (
+          <p className="text-sm">
+            {meta.twin.status === 'ENDED'
+              ? t('aar.baseline.played', { code: meta.twin.code })
+              : t('aar.baseline.waiting', { code: meta.twin.code })}{' '}
+            <Link
+              className="text-primary underline"
+              to={
+                meta.twin.status === 'ENDED'
+                  ? `/aar/${meta.twin.sessionId}`
+                  : `/instructor/sessions/${meta.twin.sessionId}`
+              }
+            >
+              {meta.twin.status === 'ENDED'
+                ? t('aar.baseline.openReview')
+                : t('aar.baseline.openSession')}
+            </Link>
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-muted-foreground">{t('aar.baseline.offer')}</p>
+            <Button disabled={creating} onClick={() => void createBaseline()}>
+              {creating ? t('aar.baseline.creating') : t('aar.baseline.create')}
+            </Button>
+          </div>
+        )}
+        {baselineError ? (
+          <p role="alert" className="mt-2 text-sm text-red-700">
+            {baselineError}
+          </p>
+        ) : null}
+      </section>
+
+      {meta.twin?.status === 'ENDED' ? <BaselineCompare sessionId={meta.sessionId} /> : null}
 
       <section
         className="rounded-lg border border-border bg-secondary p-4"

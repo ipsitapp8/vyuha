@@ -36,6 +36,10 @@ import {
   type SessionListResponse,
   type TerrainGridDto,
   type Speed,
+  mySaScoresResponseSchema,
+  type MySaScoresResponse,
+  aarCompareSchema,
+  type AarCompare,
 } from '@vyuha/shared';
 
 const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
@@ -200,6 +204,19 @@ export const api = {
       `/aar/${encodeURIComponent(sessionId)}/decisions/${encodeURIComponent(decisionId)}`,
       aarDecisionDetailSchema,
     );
+  },
+  /** Creates the baseline twin of a finished session: same scenario and seed, no degradation. */
+  createBaseline(sessionId: string): Promise<LobbyView> {
+    return request(`/sessions/${encodeURIComponent(sessionId)}/baseline`, lobbyViewSchema, {
+      method: 'POST',
+    });
+  },
+  getAarCompare(sessionId: string): Promise<AarCompare> {
+    return request(`/aar/${encodeURIComponent(sessionId)}/compare`, aarCompareSchema);
+  },
+  /** A trainee's own situation-awareness scores, available once the exercise has ended. */
+  getMySaScores(sessionId: string): Promise<MySaScoresResponse> {
+    return request(`/aar/${encodeURIComponent(sessionId)}/my-sa`, mySaScoresResponseSchema);
   },
   /** Plain download link: the auth cookie goes with the navigation, the server answers with an attachment. */
   aarExportUrl(sessionId: string, kind: 'pdf' | 'csv' | 'json'): string {

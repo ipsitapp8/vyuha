@@ -87,6 +87,8 @@ export const startedPayloadSchema = z.object({
     ),
   }),
   seed: z.number().int(),
+  /** Baseline run with every degradation off. Absent in logs written before baselines existed. */
+  clean: z.boolean().default(false),
 });
 
 const loggedInputSchema = z.union([
@@ -301,8 +303,17 @@ export class SessionManager {
       ? { visibilityM: w.visibilityM, precipitationMm: w.precipitationMm, windKph: w.windKph }
       : DEFAULT_WEATHER;
 
-    const state = createTruthState(scenario, terrain, weather, scenario.seed, roster);
-    const startedPayload = { scenario, terrain, weather, roster, seed: scenario.seed };
+    const state = createTruthState(scenario, terrain, weather, scenario.seed, roster, {
+      clean: session.clean,
+    });
+    const startedPayload = {
+      scenario,
+      terrain,
+      weather,
+      roster,
+      seed: scenario.seed,
+      clean: session.clean,
+    };
     await this.store.commitBatch({
       sessionId,
       currentTick: 0,
@@ -573,7 +584,9 @@ export class SessionManager {
     const started = logged.find((e) => e.type === 'SESSION_STARTED');
     if (!started) throw new Error(`Session ${sessionId} has no SESSION_STARTED event`);
     const p = startedPayloadSchema.parse(started.payload);
-    const initial = createTruthState(p.scenario, p.terrain, p.weather, p.seed, p.roster as Roster);
+    const initial = createTruthState(p.scenario, p.terrain, p.weather, p.seed, p.roster as Roster, {
+      clean: p.clean,
+    });
 
     const inputsByTick = inputsFromLog(logged);
     const { state, events: replayed } = replay(initial, inputsByTick, session.currentTick);

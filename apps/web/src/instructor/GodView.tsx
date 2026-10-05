@@ -94,6 +94,7 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
   const anchor = { lat: (b.south + b.north) / 2, lon: (b.west + b.east) / 2 };
   const watched = live.perceived && live.perceived.playerId === watchedId ? live.perceived : null;
   const watchedName = lobby.players.find((p) => p.id === watchedId)?.name ?? '';
+  const { clean } = lobby.session;
 
   return (
     <div className="mt-6 flex flex-col gap-6">
@@ -217,8 +218,13 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
           aria-label={t('god.inject.title')}
         >
           <h2 className="mb-2 font-semibold">{t('god.inject.title')}</h2>
+          {clean ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t('god.inject.baselineOff')}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
-            {QUICK.map((q) => (
+            {(clean ? [] : QUICK).map((q) => (
               <Button
                 key={q.type}
                 variant={quick === q.type ? 'default' : 'outline'}
@@ -252,21 +258,23 @@ export function GodView({ lobby, live, status, speed, busy, run }: Props) {
             </div>
           ) : null}
         </div>
-        <DegradationPanel
-          truth={truth}
-          onSet={async (channel, intensity) => {
-            try {
-              await send({ type: 'SET_JAMMING', channel, intensity });
-              return true;
-            } catch (e) {
-              setNotice({
-                kind: 'error',
-                text: e instanceof Error ? e.message : t('god.actionFailed'),
-              });
-              return false;
-            }
-          }}
-        />
+        {clean ? null : (
+          <DegradationPanel
+            truth={truth}
+            onSet={async (channel, intensity) => {
+              try {
+                await send({ type: 'SET_JAMMING', channel, intensity });
+                return true;
+              } catch (e) {
+                setNotice({
+                  kind: 'error',
+                  text: e instanceof Error ? e.message : t('god.actionFailed'),
+                });
+                return false;
+              }
+            }}
+          />
+        )}
       </section>
 
       <MselTimeline
@@ -309,6 +317,30 @@ function RunControls({
         <Button disabled={busy} onClick={() => void run(() => api.sessionControl(sid, 'resume'))}>
           {t('god.controls.resume')}
         </Button>
+      ) : null}
+      {status === 'RUNNING' ? (
+        <Button
+          variant="outline"
+          disabled={busy || lobby.players.length === 0}
+          title={t('god.controls.probeHelp')}
+          onClick={() => void run(() => api.sessionControl(sid, 'probe'))}
+        >
+          <Snowflake className="mr-1 h-4 w-4" aria-hidden="true" />
+          {t('god.controls.probe')}
+        </Button>
+      ) : null}
+      {lobby.session.clean ? (
+        <p className="rounded-md bg-emerald-100 px-2 py-1 text-sm font-semibold text-emerald-900">
+          {t('god.controls.baseline')}
+        </p>
+      ) : null}
+      {probe && !ended ? (
+        <p role="status" className="rounded-md bg-amber-100 px-2 py-1 text-sm text-amber-900">
+          {t('god.controls.probeOpen', {
+            answered: lobby.players.length - probe.pending.length,
+            total: lobby.players.length,
+          })}
+        </p>
       ) : null}
       {!ended ? (
         <>

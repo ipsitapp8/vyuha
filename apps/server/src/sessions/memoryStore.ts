@@ -51,7 +51,7 @@ export function createMemorySessionStore(
       failCommit = true;
     },
 
-    async createSession(scenarioId, code) {
+    async createSession(scenarioId, code, profile) {
       if ([...sessions.values()].some((s) => s.code === code)) throw new CodeTakenError();
       const row: SessionRow = {
         id: randomUUID(),
@@ -64,6 +64,8 @@ export function createMemorySessionStore(
         startedAt: null,
         endedAt: null,
         createdAt: new Date(),
+        clean: profile?.clean ?? false,
+        baselineOfId: profile?.baselineOfId ?? null,
       };
       sessions.set(row.id, row);
       return { ...row };

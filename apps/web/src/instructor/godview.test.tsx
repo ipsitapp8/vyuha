@@ -49,6 +49,8 @@ const lobby: LobbyView = {
     scenarioTitle: 'Op',
     areaBounds: { south: 34, west: 77, north: 35, east: 78 },
     createdAt: '2026-01-01T00:00:00Z',
+    clean: false,
+    baselineOfId: null,
   },
   teams: [
     {
@@ -183,6 +185,125 @@ beforeEach(() => {
 afterEach(() => {
   expect(errors.mock.calls).toEqual([]);
   errors.mockRestore();
+});
+
+describe('GodView: freeze and probe', () => {
+  it('starts a probe from the controls while running', async () => {
+    const user = userEvent.setup();
+    renderGod(live());
+    await user.click(screen.getByRole('button', { name: 'Freeze & Probe' }));
+    expect(control).toHaveBeenCalledWith('s1', 'probe');
+  });
+
+  it('shows who has answered while the exercise is frozen, and offers Resume instead', () => {
+    renderGod(
+      live({
+        truth: {
+          ...truth,
+          probe: { id: 'probe-1', tick: 200, expiresAtTick: 230, pending: ['p2'] },
+        },
+      }),
+      'PAUSED',
+    );
+    expect(screen.getByText(/Situation check open: 1 of 2 answered/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Freeze & Probe' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
+  });
+
+  it('shows each trainee their latest and mean situation-awareness score', () => {
+    renderGod(
+      live({
+        truth: {
+          ...truth,
+          players: { p1: { ...m, probeCount: 2, lastSaScore: 70, saScore: 60 }, p2: m },
+        },
+      }),
+    );
+    expect(screen.getByText('last 70 · mean 60 (2)')).toBeInTheDocument();
+  });
+});
+
+describe('GodView: baseline run', () => {
+  it('says it is a baseline and offers no degrading injects or jamming sliders', () => {
+    const cleanLobby = { ...lobby, session: { ...lobby.session, clean: true, baselineOfId: 's0' } };
+    render(
+      <MemoryRouter>
+        <GodView
+          lobby={cleanLobby}
+          live={live()}
+          status="RUNNING"
+          speed={1}
+          busy={false}
+          run={run}
+        />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByText('Baseline run: no jamming, delay, dropout or spoofs'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Degrading injects are switched off in a baseline run.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Jam a channel' })).toBeNull();
+    expect(screen.queryByRole('slider')).toBeNull();
+    // the exercise itself is still controlled as usual
+    expect(screen.getByRole('button', { name: 'Freeze & Probe' })).toBeInTheDocument();
+  });
+});
+
+describe('GodView: air and cyber injects', () => {
+  it('offers both as live injects and sends the validated inject', async () => {
+    const user = userEvent.setup();
+    renderGod(live());
+    await user.click(screen.getByRole('button', { name: 'Compromise C2 node' }));
+    await user.click(screen.getByRole('button', { name: 'Fire inject now' }));
+    expect(instruct).toHaveBeenCalledWith({
+      type: 'INJECT_NOW',
+      inject: expect.objectContaining({ type: 'C2_COMPROMISE', driftMps: 5 }),
+    });
+    expect(screen.getByRole('button', { name: 'Spoof UAV GPS' })).toBeInTheDocument();
+  });
+
+  it('shows the instructor which effects are in force and the related truth events', () => {
+    renderGod(
+      live({
+        truth: {
+          ...truth,
+          effects: {
+            gpsSpoofs: [{ unitId: 'b-pl', offsetM: 2000, untilTick: 400 }],
+            c2Compromises: [
+              { playerId: 'p2', sinceTick: 100, untilTick: 700, channel: 'VHF', driftM: 850 },
+            ],
+          },
+        },
+        truthEvents: [
+          {
+            tick: 150,
+            type: 'C2_COMPROMISE_DETECTED',
+            payload: { playerId: 'p2', via: 'HF', afterTicks: 50 },
+            visibleTo: ['p2', 'instructor'],
+          },
+          {
+            tick: 160,
+            type: 'SPOOFED_UAV_ACTED',
+            payload: { playerId: 'p1', reportId: 'rpt-7' },
+            visibleTo: ['instructor'],
+          },
+        ],
+      }),
+    );
+    const effects = screen.getByRole('list', { name: 'Air and cyber effects in force' });
+    expect(
+      within(effects).getByText(/GPS spoofed, reports 2000 m off, until 06:40/),
+    ).toBeInTheDocument();
+    expect(
+      within(effects).getByText(/C2 node compromised on VHF radio, teammates shown 850 m off/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/C2 compromise detected after 50 s, cross-check over HF/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Acted on spoofed UAV data \(contact rpt-7\)/)).toBeInTheDocument();
+  });
 });
 
 describe('GodView', () => {

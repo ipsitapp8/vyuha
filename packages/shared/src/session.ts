@@ -70,6 +70,10 @@ export const lobbyViewSchema = z.object({
     scenarioTitle: z.string(),
     areaBounds: areaBoundsSchema,
     createdAt: z.string(),
+    /** Baseline run: every degradation is switched off. */
+    clean: z.boolean(),
+    /** For a baseline run: the finished session it is the twin of. */
+    baselineOfId: z.string().nullable(),
   }),
   teams: z.array(z.object({ id: z.string(), name: z.string(), pace: paceDefaultsSchema })),
   players: z.array(
@@ -99,6 +103,8 @@ export const sessionListResponseSchema = z.object({
       scenarioTitle: z.string(),
       playerCount: z.number().int(),
       createdAt: z.string(),
+      clean: z.boolean(),
+      baselineOfId: z.string().nullable(),
     }),
   ),
 });

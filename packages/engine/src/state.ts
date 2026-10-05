@@ -24,6 +24,7 @@ export function createTruthState(
   weather: Weather,
   seed: number,
   roster: Roster = { teams: [], players: [] },
+  options: { clean?: boolean } = {},
 ): TruthState {
   if (!isValidGrid(terrain)) throw new RangeError('Terrain grid is invalid');
   const units: EngineUnit[] = scenario.initialUnits.map((u) => ({
@@ -85,6 +86,10 @@ export function createTruthState(
     inFlight: [],
     runners: [],
     knowledge,
+    probes: [],
+    gpsSpoofs: [],
+    c2Compromises: [],
+    clean: options.clean === true,
     counters: { message: 0, report: 0, runner: 0, group: 0, liveInject: 0 },
   };
 }
@@ -130,6 +135,7 @@ export function adversaryActive(state: TruthState): boolean {
 }
 
 export function currentJamming(state: TruthState): Record<Channel, number> {
+  if (state.clean) return zeroLevels();
   return effectiveJamming(
     state.tick,
     state.jamWindows,

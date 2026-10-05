@@ -20,6 +20,14 @@ type PlayerWithUser = Prisma.PlayerGetPayload<{
   include: { user: { select: { name: true; isDemoBot: true } } };
 }>;
 
+/** Stored in Session.degradationProfile; sessions created before baselines existed hold `{}`. */
+const profileSchema = z
+  .object({
+    clean: z.boolean().catch(false).default(false),
+    baselineOfId: z.string().nullable().catch(null).default(null),
+  })
+  .catch({ clean: false, baselineOfId: null });
+
 const sessionRow = (s: SessionWithScenario): SessionRow => ({
   id: s.id,
   code: s.code,
@@ -31,6 +39,7 @@ const sessionRow = (s: SessionWithScenario): SessionRow => ({
   startedAt: s.startedAt,
   endedAt: s.endedAt,
   createdAt: s.createdAt,
+  ...profileSchema.parse(s.degradationProfile),
 });
 
 const teamRow = (t: {
@@ -64,10 +73,16 @@ const isCode = (err: unknown, code: string): boolean =>
 
 export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
   return {
-    async createSession(scenarioId, code) {
+    async createSession(scenarioId, code, profile) {
       try {
         const s = await prisma.session.create({
-          data: { scenarioId, code, degradationProfile: {} },
+          data: {
+            scenarioId,
+            code,
+            degradationProfile: profile
+              ? { clean: profile.clean, baselineOfId: profile.baselineOfId }
+              : {},
+          },
           include: withScenario,
         });
         return sessionRow(s);
@@ -248,6 +263,7 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
         brierScore: r.brierScore,
         spoofsChallengedPct: r.spoofsChallengedPct,
         reportGradingAccuracy: r.reportGradingAccuracy,
+        saScore: r.saScore,
         code: r.session.code,
         scenarioTitle: r.session.scenario.title,
       }));

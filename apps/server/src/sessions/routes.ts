@@ -101,6 +101,18 @@ export function registerSessionRoutes(
     }),
   );
 
+  /** Creates the baseline twin of a finished exercise: same scenario and seed, no degradation. */
+  app.post(
+    '/sessions/:id/baseline',
+    instructor,
+    guarded<Id>(async (request, reply) => {
+      const source = await lobby.requireSession(request.params.id);
+      const twin = await lobby.createBaseline(source);
+      reply.status(201);
+      return lobby.view(twin);
+    }),
+  );
+
   app.get(
     '/sessions',
     instructor,
@@ -114,6 +126,8 @@ export function registerSessionRoutes(
           scenarioTitle: s.scenarioTitle,
           playerCount: s.playerCount,
           createdAt: s.createdAt.toISOString(),
+          clean: s.clean,
+          baselineOfId: s.baselineOfId,
         })),
       };
       return body;

@@ -11,6 +11,16 @@ export interface SessionRow {
   startedAt: Date | null;
   endedAt: Date | null;
   createdAt: Date;
+  /** Baseline run: every degradation is switched off (see the engine's `clean` state). */
+  clean: boolean;
+  /** For a baseline run: the finished session it is the twin of. */
+  baselineOfId: string | null;
+}
+
+/** How a session differs from an ordinary degraded run. */
+export interface SessionProfile {
+  clean: boolean;
+  baselineOfId: string | null;
 }
 
 export interface TeamRow {
@@ -105,7 +115,7 @@ export type PlayerPatch = Partial<Pick<PlayerRow, 'teamId' | 'role' | 'unitId'>>
 
 /** Persistence for sessions. Prisma in production, in-memory in unit tests. */
 export interface SessionStore {
-  createSession(scenarioId: string, code: string): Promise<SessionRow>;
+  createSession(scenarioId: string, code: string, profile?: SessionProfile): Promise<SessionRow>;
   getSession(id: string): Promise<SessionRow | null>;
   getSessionByCode(code: string): Promise<SessionRow | null>;
   listSessions(): Promise<(SessionRow & { playerCount: number })[]>;

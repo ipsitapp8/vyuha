@@ -18,6 +18,7 @@ import {
   type SessionRow,
   type SessionStore,
   type TeamRow,
+  type SessionProfile,
 } from './store';
 
 export function generateSessionCode(): string {
@@ -54,16 +55,42 @@ export class LobbyService {
     }
   }
 
-  async createSession(scenarioId: string): Promise<SessionRow> {
+  async createSession(scenarioId: string, profile?: SessionProfile): Promise<SessionRow> {
     await this.requireDefinition(scenarioId);
     for (let attempt = 0; attempt < 8; attempt++) {
       try {
-        return await this.store.createSession(scenarioId, this.newCode());
+        return await this.store.createSession(scenarioId, this.newCode(), profile);
       } catch (err) {
         if (!(err instanceof CodeTakenError)) throw err;
       }
     }
     throw new HttpError(500, 'INTERNAL_ERROR', 'Could not allocate a session code');
+  }
+
+  /**
+   * A baseline twin of a finished exercise: the same scenario (so the same seed and MSEL) with every
+   * degradation switched off, and the same teams and PACE plans waiting in its lobby. The trainees
+   * join it with its own code, so the review can compare the same person in both runs.
+   */
+  async createBaseline(source: SessionRow): Promise<SessionRow> {
+    if (source.status !== 'ENDED' || !source.startedAt) {
+      throw new HttpError(
+        409,
+        'SESSION_STATE',
+        'A baseline can be made once the exercise has been played and ended',
+      );
+    }
+    if (source.clean) {
+      throw new HttpError(409, 'CONFLICT', 'This session is already a baseline run');
+    }
+    const twin = await this.createSession(source.scenarioId, {
+      clean: true,
+      baselineOfId: source.id,
+    });
+    for (const team of await this.store.listTeams(source.id)) {
+      await this.store.createTeam(twin.id, team.name, team.pace);
+    }
+    return twin;
   }
 
   /** Trainee joins by code. Existing players may always re-enter; new ones only during the lobby. */
@@ -95,6 +122,8 @@ export class LobbyService {
         scenarioTitle: session.scenarioTitle,
         areaBounds: def.areaBounds,
         createdAt: session.createdAt.toISOString(),
+        clean: session.clean,
+        baselineOfId: session.baselineOfId,
       },
       teams: teams.map((t) => ({ id: t.id, name: t.name, pace: t.pace })),
       players: players.map((p) => ({

@@ -191,6 +191,14 @@ export const aarSummarySchema = z.object({
       }),
     ),
     scenarioId: z.string(),
+    /** Baseline run: every degradation was switched off. */
+    clean: z.boolean(),
+    /** For a baseline run: the degraded session it is the twin of. */
+    baselineOfId: z.string().nullable(),
+    /** The other half of the pair (a baseline's source, or a degraded run's newest baseline), if any. */
+    twin: z
+      .object({ sessionId: z.string(), code: z.string(), status: sessionStatusSchema })
+      .nullable(),
     areaBounds: z.object({
       south: z.number(),
       west: z.number(),
@@ -230,6 +238,47 @@ export const aarSummarySchema = z.object({
   }),
 });
 export type AarSummary = z.infer<typeof aarSummarySchema>;
+
+// ---- Degraded run against its clean baseline ---------------------------------------------------
+
+const compareSideSchema = z.object({
+  sessionId: z.string(),
+  code: z.string(),
+  durationTicks: z.number().int(),
+  decisions: z.array(aarDecisionSchema),
+  drift: z.record(z.string(), z.array(driftPointSchema)),
+  players: z.array(
+    z.object({
+      playerId: z.string(),
+      userId: z.string(),
+      name: z.string(),
+      decisionCount: z.number().int(),
+      avgLatencyTicks: z.number().nullable(),
+      accuracy: z.number().nullable(),
+      brierScore: z.number().nullable(),
+      meanPositionErrorM: z.number().nullable(),
+      meanMissed: z.number().nullable(),
+    }),
+  ),
+});
+export type AarCompareSide = z.infer<typeof compareSideSchema>;
+
+/** GET /aar/:sessionId/compare: the degraded exercise beside its baseline twin. */
+export const aarCompareSchema = z.object({
+  scenarioTitle: z.string(),
+  degraded: compareSideSchema,
+  baseline: compareSideSchema,
+  /** Trainees who played both runs, matched by account: the fair comparison. */
+  trainees: z.array(
+    z.object({
+      userId: z.string(),
+      name: z.string(),
+      degradedPlayerId: z.string(),
+      baselinePlayerId: z.string(),
+    }),
+  ),
+});
+export type AarCompare = z.infer<typeof aarCompareSchema>;
 
 // ---- Ghost replay ----------------------------------------------------------------------------
 

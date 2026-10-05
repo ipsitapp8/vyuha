@@ -226,6 +226,8 @@ const lobby: LobbyView = {
     scenarioTitle: 'Op',
     areaBounds: { south: 1, west: 1, north: 2, east: 2 },
     createdAt: '2026-01-01T00:00:00Z',
+    clean: false,
+    baselineOfId: null,
   },
   teams: [],
   players: [

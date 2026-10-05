@@ -47,6 +47,8 @@ const row = (n: number, status: Row['status'], playerCount = 3): Row => ({
   scenarioTitle: 'Op Silent Ridge',
   playerCount,
   createdAt: '2026-01-01T10:00:00.000Z',
+  clean: false,
+  baselineOfId: null,
 });
 
 function renderHome() {
