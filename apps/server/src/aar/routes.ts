@@ -1,8 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AuthGuards } from '../auth';
 import { HttpError } from '../errors';
-import { guarded, parse } from '../sessions/routes';
+import type { SessionAccess } from '../sessions/access';
+import { guarded, parse, userOf } from '../sessions/routes';
 import type { AarService } from './service';
 
 const snapshotQuery = z.object({
@@ -15,9 +16,20 @@ const BOM = String.fromCharCode(0xfeff);
 
 type Id = { sessionId: string };
 
-/** After action review endpoints (instructors only). Only ENDED sessions can be reviewed. */
-export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar: AarService): void {
+/**
+ * After action review endpoints. Only ENDED sessions can be reviewed, and only by the session's owner or
+ * co-instructors; a trainee gets their own probe scores and nothing else.
+ */
+export function registerAarRoutes(
+  app: FastifyInstance,
+  guards: AuthGuards,
+  aar: AarService,
+  access: SessionAccess,
+): void {
   const instructor = { preHandler: guards.requireRole('INSTRUCTOR') };
+  /** Every instructor route checks the session before the review is built. */
+  const allowed = (request: FastifyRequest<{ Params: Id }>): Promise<unknown> =>
+    access.requireInstructor(userOf(request), request.params.sessionId);
 
   /** A trainee's own probe scores after the exercise (no ground truth in the response). */
   app.get(
@@ -32,14 +44,29 @@ export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar:
   app.get(
     '/aar/:sessionId',
     instructor,
-    guarded<Id>(async (request) => aar.summary(request.params.sessionId)),
+    guarded<Id>(async (request) => {
+      await allowed(request);
+      const summary = await aar.summary(request.params.sessionId);
+      const twin = summary.meta.twin;
+      // The twin's id and code are only shown to instructors who may open that run too.
+      if (twin && !(await access.canInstruct(userOf(request), twin.sessionId))) {
+        return { ...summary, meta: { ...summary.meta, twin: null } };
+      }
+      return summary;
+    }),
   );
 
   /** The degraded run beside its clean baseline twin (either session of the pair). */
   app.get(
     '/aar/:sessionId/compare',
     instructor,
-    guarded<Id>(async (request) => aar.compare(request.params.sessionId)),
+    guarded<Id>(async (request) => {
+      await allowed(request);
+      // The comparison also reveals the twin run, so the caller must be entitled to that one as well.
+      const twinId = await aar.twinSessionId(request.params.sessionId);
+      if (twinId) await access.requireInstructor(userOf(request), twinId);
+      return aar.compare(request.params.sessionId);
+    }),
   );
 
   /** Ground truth and a trainee's perception at any tick, rebuilt by deterministic replay. */
@@ -47,6 +74,7 @@ export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar:
     '/aar/:sessionId/snapshot',
     instructor,
     guarded<Id>(async (request) => {
+      await allowed(request);
       const q = parse(snapshotQuery, request.query);
       return aar.snapshot(request.params.sessionId, q.tick, q.playerId ?? null);
     }),
@@ -55,15 +83,17 @@ export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar:
   app.get(
     '/aar/:sessionId/decisions/:decisionId',
     instructor,
-    guarded<Id & { decisionId: string }>(async (request) =>
-      aar.decisionDetail(request.params.sessionId, request.params.decisionId),
-    ),
+    guarded<Id & { decisionId: string }>(async (request) => {
+      await allowed(request);
+      return aar.decisionDetail(request.params.sessionId, request.params.decisionId);
+    }),
   );
 
   app.get(
     '/aar/:sessionId/export.json',
     instructor,
     guarded<Id>(async (request, reply) => {
+      await allowed(request);
       const f = await aar.json(request.params.sessionId);
       return reply
         .header('Content-Type', 'application/json; charset=utf-8')
@@ -76,6 +106,7 @@ export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar:
     '/aar/:sessionId/export.csv',
     instructor,
     guarded<Id>(async (request, reply) => {
+      await allowed(request);
       const f = await aar.csv(request.params.sessionId);
       return reply
         .header('Content-Type', 'text/csv; charset=utf-8')
@@ -88,6 +119,7 @@ export function registerAarRoutes(app: FastifyInstance, guards: AuthGuards, aar:
     '/aar/:sessionId/export.pdf',
     instructor,
     guarded<Id>(async (request, reply) => {
+      await allowed(request);
       const f = await aar.pdf(request.params.sessionId);
       return reply
         .header('Content-Type', 'application/pdf')

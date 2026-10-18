@@ -27,17 +27,21 @@ enum PlayerRole {
 }
 
 model User {
-  id           String          @id @default(cuid())
-  name         String
-  email        String          @unique
-  passwordHash String
-  role         Role
+  id            String              @id @default(cuid())
+  name          String
+  email         String              @unique
+  passwordHash  String
+  role          Role
   /// Scripted demo trainee created by `pnpm demo:history`; shown as "Demo bot" in the UI.
-  isDemoBot    Boolean         @default(false)
-  createdAt    DateTime        @default(now())
-  scenarios    Scenario[]
-  players      Player[]
-  metrics      SessionMetric[]
+  isDemoBot     Boolean             @default(false)
+  createdAt     DateTime            @default(now())
+  scenarios     Scenario[]
+  players       Player[]
+  metrics       SessionMetric[]
+  /// Sessions this instructor created (and so owns).
+  ownedSessions Session[]           @relation("SessionOwner")
+  /// Sessions an owner has explicitly shared with this instructor.
+  coInstructing SessionInstructor[]
 }
 
 model Scenario {
@@ -76,22 +80,41 @@ model WeatherSnapshot {
 }
 
 model Session {
-  id                 String          @id @default(cuid())
+  id                 String              @id @default(cuid())
   scenarioId         String
-  scenario           Scenario        @relation(fields: [scenarioId], references: [id])
-  code               String          @unique
-  status             SessionStatus   @default(LOBBY)
-  speed              Int             @default(1)
-  currentTick        Int             @default(0)
-  createdAt          DateTime        @default(now())
+  scenario           Scenario            @relation(fields: [scenarioId], references: [id])
+  code               String              @unique
+  status             SessionStatus       @default(LOBBY)
+  speed              Int                 @default(1)
+  currentTick        Int                 @default(0)
+  createdAt          DateTime            @default(now())
   startedAt          DateTime?
   endedAt            DateTime?
   degradationProfile Json
+  /// The instructor who created the session. Null for sessions created before ownership existed (or whose
+  /// owner was deleted): nobody can instruct those until `pnpm sessions:assign-owner` names an owner.
+  ownerId            String?
+  owner              User?               @relation("SessionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  coInstructors      SessionInstructor[]
   teams              Team[]
   players            Player[]
   events             SessionEvent[]
   decisions          Decision[]
   metrics            SessionMetric[]
+
+  @@index([ownerId])
+}
+
+/// An instructor the session's owner has explicitly authorised to run and review it.
+model SessionInstructor {
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addedAt   DateTime @default(now())
+
+  @@id([sessionId, userId])
+  @@index([userId])
 }
 
 model Team {

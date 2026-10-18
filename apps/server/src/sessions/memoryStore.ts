@@ -32,10 +32,14 @@ export function createMemorySessionStore(
   grades: GradeRow[];
   metrics: SessionMetricRow[];
   failNextCommit(): void;
+  /** What deleting the owner's account does in PostgreSQL (ON DELETE SET NULL), or a pre-ownership row. */
+  clearOwner(sessionId: string): void;
 } {
   const sessions = new Map<string, SessionRow>();
   const teams = new Map<string, TeamRow>();
   const players = new Map<string, PlayerRow>();
+  /** `${sessionId} ${userId}` for every co-instructor grant. */
+  const coInstructors = new Set<string>();
   const events = new Map<string, EventRow[]>();
   const decisions: (StoredDecision & { sessionId: string })[] = [];
   const grades: GradeRow[] = [];
@@ -50,8 +54,12 @@ export function createMemorySessionStore(
     failNextCommit: () => {
       failCommit = true;
     },
+    clearOwner: (sessionId) => {
+      const s = sessions.get(sessionId);
+      if (s) sessions.set(sessionId, { ...s, ownerId: null });
+    },
 
-    async createSession(scenarioId, code, profile) {
+    async createSession(scenarioId, code, ownerId, profile) {
       if ([...sessions.values()].some((s) => s.code === code)) throw new CodeTakenError();
       const row: SessionRow = {
         id: randomUUID(),
@@ -66,6 +74,7 @@ export function createMemorySessionStore(
         createdAt: new Date(),
         clean: profile?.clean ?? false,
         baselineOfId: profile?.baselineOfId ?? null,
+        ownerId,
       };
       sessions.set(row.id, row);
       return { ...row };
@@ -83,6 +92,15 @@ export function createMemorySessionStore(
         ...s,
         playerCount: [...players.values()].filter((p) => p.sessionId === s.id).length,
       }));
+    },
+    async listSessionsForInstructor(userId) {
+      return [...sessions.values()]
+        .filter((s) => s.ownerId === userId || coInstructors.has(`${s.id} ${userId}`))
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .map((s) => ({
+          ...s,
+          playerCount: [...players.values()].filter((p) => p.sessionId === s.id).length,
+        }));
     },
     async listRunnable() {
       return [...sessions.values()]
@@ -120,6 +138,21 @@ export function createMemorySessionStore(
       teams.delete(teamId);
       for (const [id, p] of players)
         if (p.teamId === teamId) players.set(id, { ...p, teamId: null });
+    },
+
+    async listCoInstructors(sessionId) {
+      return [...coInstructors]
+        .map((k) => k.split(' '))
+        .flatMap(([sid, uid]) => (sid === sessionId && uid ? [uid] : []));
+    },
+    async isCoInstructor(sessionId, userId) {
+      return coInstructors.has(`${sessionId} ${userId}`);
+    },
+    async addCoInstructor(sessionId, userId) {
+      coInstructors.add(`${sessionId} ${userId}`);
+    },
+    async removeCoInstructor(sessionId, userId) {
+      return coInstructors.delete(`${sessionId} ${userId}`);
     },
 
     async listPlayers(sessionId) {

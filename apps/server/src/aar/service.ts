@@ -202,6 +202,12 @@ export class AarService {
     return twin ? { sessionId: twin.id, code: twin.code, status: twin.status } : null;
   }
 
+  /** The other run of a degraded / baseline pair, if there is one (used to authorise comparisons). */
+  async twinSessionId(sessionId: string): Promise<string | null> {
+    const session = await this.store.getSession(sessionId);
+    return session ? ((await this.twinOf(session))?.sessionId ?? null) : null;
+  }
+
   /**
    * The degraded exercise beside its clean baseline: decisions, latency and picture drift for both, and
    * the trainees who played both. Works from either session of the pair.

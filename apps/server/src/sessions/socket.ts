@@ -11,10 +11,11 @@ import {
   type JoinAck,
   type PublicUser,
 } from '@vyuha/shared';
-import { authenticateToken } from '../auth';
+import { authenticateToken, toPublicUser } from '../auth';
 import type { Config } from '../config';
 import { HttpError } from '../errors';
 import type { UserRepo } from '../repos';
+import type { SessionAccess } from './access';
 import type { LobbyService } from './lobby';
 import { room, type ManagerLogger, type SessionManager } from './manager';
 import type { SessionStore } from './store';
@@ -84,9 +85,34 @@ export function attachSocketHandlers(
   store: SessionStore,
   lobby: LobbyService,
   manager: SessionManager,
+  access: SessionAccess,
   log: ManagerLogger,
   limiter: RateLimiter = new RateLimiter(20, 5),
 ): void {
+  /**
+   * The socket's user as the database has it now. The handshake user can be stale (role changed,
+   * account deleted), and instructor rights must be judged on the server's current record.
+   */
+  const currentUser = async (socket: Socket): Promise<PublicUser> => {
+    const record = await users.findById(data(socket).user.id);
+    if (!record) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in required');
+    const user = toPublicUser(record);
+    data(socket).user = user;
+    return user;
+  };
+
+  /** The session this instructor socket joined, re-checked against the access rules on every call. */
+  const instructedSession = async (socket: Socket): Promise<string> => {
+    const user = await currentUser(socket);
+    if (user.role !== 'INSTRUCTOR') {
+      throw new HttpError(403, 'FORBIDDEN', 'Only instructors can do that');
+    }
+    const { sessionId } = data(socket);
+    if (!sessionId) throw new HttpError(403, 'NOT_IN_SESSION', 'Join a session first');
+    await access.requireInstructor(user, sessionId);
+    return sessionId;
+  };
+
   // Every socket must carry the same httpOnly auth cookie the REST API uses.
   io.use((socket, next) => {
     authenticateToken(readCookie(socket.handshake.headers.cookie, AUTH_COOKIE_NAME), config, users)
@@ -108,7 +134,7 @@ export function attachSocketHandlers(
     /** Joins the session's rooms and immediately sends the current lobby, status and picture. */
     socket.on(SOCKET_EVENTS.join, async (raw: unknown, ack: unknown) => {
       try {
-        const user = data(socket).user;
+        const user = await currentUser(socket);
         if (!limiter.allow(`join:${user.id}`))
           throw new HttpError(429, 'RATE_LIMITED', 'Slow down');
         const parsed = joinPayloadSchema.safeParse(raw);
@@ -122,9 +148,15 @@ export function attachSocketHandlers(
           if (!player)
             throw new HttpError(403, 'NOT_IN_SESSION', 'You have not joined this session');
           playerId = player.id;
+        } else {
+          // Same rule as the REST API: only the owner or an explicitly added co-instructor.
+          await access.assertInstructor(user, session);
         }
 
         for (const r of socket.rooms) if (r.startsWith('session:')) await socket.leave(r);
+        data(socket).sessionId = undefined;
+        data(socket).playerId = undefined;
+        data(socket).watching = undefined;
         await socket.join(room.session(session.id));
         data(socket).sessionId = session.id;
         if (playerId) {
@@ -156,12 +188,9 @@ export function attachSocketHandlers(
     /** Instructor controls: live injects, jamming levels and live MSEL edits. */
     socket.on(SOCKET_EVENTS.instructorInput, async (raw: unknown, ack: unknown) => {
       try {
-        const { user, sessionId } = data(socket);
-        if (!limiter.allow(`action:${user.id}`))
+        if (!limiter.allow(`action:${data(socket).user.id}`))
           throw new HttpError(429, 'RATE_LIMITED', 'Too many actions, slow down');
-        if (user.role !== 'INSTRUCTOR')
-          throw new HttpError(403, 'FORBIDDEN', 'Only instructors can do that');
-        if (!sessionId) throw new HttpError(403, 'NOT_IN_SESSION', 'Join a session first');
+        const sessionId = await instructedSession(socket);
         const parsed = instructorInputSchema.safeParse(raw);
         if (!parsed.success) {
           const detail = parsed.error.issues
@@ -179,22 +208,21 @@ export function attachSocketHandlers(
     /** God View: look through one trainee's eyes (their perceived state is streamed to this socket). */
     socket.on(SOCKET_EVENTS.watch, async (raw: unknown, ack: unknown) => {
       try {
+        const sessionId = await instructedSession(socket);
         const d = data(socket);
-        if (d.user.role !== 'INSTRUCTOR')
-          throw new HttpError(403, 'FORBIDDEN', 'Only instructors can do that');
-        if (!d.sessionId) throw new HttpError(403, 'NOT_IN_SESSION', 'Join a session first');
         const parsed = watchPayloadSchema.safeParse(raw);
         if (!parsed.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Invalid player');
         const target = parsed.data.playerId;
         let perceived = null;
         if (target) {
-          perceived = await manager.perceivedFor(d.sessionId, target);
+          // Only a player of this very session: the id is the client's, so it is checked here.
+          perceived = await manager.perceivedFor(sessionId, target);
           if (!perceived) throw new HttpError(404, 'NOT_FOUND', 'No such player in this exercise');
         }
-        if (d.watching) await socket.leave(room.player(d.sessionId, d.watching));
+        if (d.watching) await socket.leave(room.player(sessionId, d.watching));
         d.watching = target ?? undefined;
         if (target) {
-          await socket.join(room.player(d.sessionId, target));
+          await socket.join(room.player(sessionId, target));
           if (perceived) socket.emit(SOCKET_EVENTS.perceived, perceived);
         }
         reply(ack, { ok: true });

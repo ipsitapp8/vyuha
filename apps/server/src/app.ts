@@ -17,6 +17,7 @@ import { registerScenarioRoutes } from './scenarioRoutes';
 import { sendError } from './errors';
 import { registerGeoRoutes } from './geo/routes';
 import type { Deps } from './repos';
+import { SessionAccess } from './sessions/access';
 import { LobbyService } from './sessions/lobby';
 import { SessionManager, type Scheduler } from './sessions/manager';
 import { registerSessionRoutes } from './sessions/routes';
@@ -162,8 +163,9 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
         (sessionId) => progress.recordSession(sessionId),
       );
       manager = created;
-      registerSessionRoutes(api, guards, deps.sessions, lobby, created);
-      registerAarRoutes(api, guards, new AarService(deps.sessions));
+      const access = new SessionAccess(deps.sessions);
+      registerSessionRoutes(api, guards, deps.sessions, lobby, created, access, deps.users);
+      registerAarRoutes(api, guards, new AarService(deps.sessions), access);
       registerProgressRoutes(api, guards, progress);
       attachSocketHandlers(
         io,
@@ -172,6 +174,7 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
         deps.sessions,
         lobby,
         created,
+        access,
         api.log,
         options.limiter,
       );

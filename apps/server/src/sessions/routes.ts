@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import {
+  addCoInstructorBodySchema,
   assignPlayerBodySchema,
   createSessionBodySchema,
   createTeamBodySchema,
@@ -11,10 +12,13 @@ import {
   type JoinSessionResponse,
   type LobbyView,
   type PublicUser,
+  type SessionInstructorsResponse,
   type SessionListResponse,
 } from '@vyuha/shared';
 import type { AuthGuards } from '../auth';
 import { HttpError, sendError } from '../errors';
+import type { UserRepo } from '../repos';
+import type { SessionAccess } from './access';
 import type { LobbyService } from './lobby';
 import type { SessionManager } from './manager';
 import type { SessionRow, SessionStore } from './store';
@@ -50,7 +54,7 @@ export function guarded<P>(
   };
 }
 
-function userOf(request: FastifyRequest): PublicUser {
+export function userOf(request: FastifyRequest): PublicUser {
   if (!request.user) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in required');
   return request.user;
 }
@@ -61,14 +65,19 @@ export function registerSessionRoutes(
   store: SessionStore,
   lobby: LobbyService,
   manager: SessionManager,
+  access: SessionAccess,
+  users: UserRepo,
 ): void {
   const instructor = { preHandler: guards.requireRole('INSTRUCTOR') };
   const trainee = { preHandler: guards.requireRole('TRAINEE') };
   const anyUser = { preHandler: guards.requireAuth };
 
-  /** Instructors may see any session; trainees only the sessions they joined. */
+  /** The session's owner or co-instructors; trainees only the sessions they joined. */
   async function assertCanView(user: PublicUser, session: SessionRow): Promise<void> {
-    if (user.role === 'INSTRUCTOR') return;
+    if (user.role === 'INSTRUCTOR') {
+      await access.assertInstructor(user, session);
+      return;
+    }
     if (!(await store.findPlayerByUser(session.id, user.id))) {
       throw new HttpError(403, 'NOT_IN_SESSION', 'You have not joined this session');
     }
@@ -95,7 +104,7 @@ export function registerSessionRoutes(
     instructor,
     guarded<Record<string, never>>(async (request, reply) => {
       const body = parse(createSessionBodySchema, request.body);
-      const session = await lobby.createSession(body.scenarioId);
+      const session = await lobby.createSession(body.scenarioId, userOf(request).id);
       reply.status(201);
       return lobby.view(session);
     }),
@@ -106,8 +115,9 @@ export function registerSessionRoutes(
     '/sessions/:id/baseline',
     instructor,
     guarded<Id>(async (request, reply) => {
-      const source = await lobby.requireSession(request.params.id);
-      const twin = await lobby.createBaseline(source);
+      const user = userOf(request);
+      const source = await access.requireInstructor(user, request.params.id);
+      const twin = await lobby.createBaseline(source, user.id);
       reply.status(201);
       return lobby.view(twin);
     }),
@@ -116,8 +126,8 @@ export function registerSessionRoutes(
   app.get(
     '/sessions',
     instructor,
-    guarded<Record<string, never>>(async () => {
-      const rows = await store.listSessions();
+    guarded<Record<string, never>>(async (request) => {
+      const rows = await store.listSessionsForInstructor(userOf(request).id);
       const body: SessionListResponse = {
         sessions: rows.map((s) => ({
           id: s.id,
@@ -177,7 +187,7 @@ export function registerSessionRoutes(
     '/sessions/:id/teams',
     instructor,
     guarded<Id>(async (request, reply) => {
-      const session = await lobby.requireSession(request.params.id);
+      const session = await access.requireInstructor(userOf(request), request.params.id);
       await lobby.createTeam(session, parse(createTeamBodySchema, request.body));
       return respondWithLobby(session, reply, 201);
     }),
@@ -187,7 +197,7 @@ export function registerSessionRoutes(
     '/sessions/:id/teams/:teamId',
     instructor,
     guarded<TeamParams>(async (request, reply) => {
-      const session = await lobby.requireSession(request.params.id);
+      const session = await access.requireInstructor(userOf(request), request.params.id);
       await lobby.updateTeam(
         session,
         request.params.teamId,
@@ -201,20 +211,22 @@ export function registerSessionRoutes(
     '/sessions/:id/teams/:teamId',
     instructor,
     guarded<TeamParams>(async (request, reply) => {
-      const session = await lobby.requireSession(request.params.id);
+      const session = await access.requireInstructor(userOf(request), request.params.id);
       await lobby.deleteTeam(session, request.params.teamId);
       return respondWithLobby(session, reply);
     }),
   );
 
-  /** The team's own members (or the instructor) set its PACE plan in the lobby. */
+  /** The team's own members (or the session's instructors) set its PACE plan in the lobby. */
   app.patch(
     '/sessions/:id/teams/:teamId/pace',
     anyUser,
     guarded<TeamParams>(async (request, reply) => {
       const user = userOf(request);
       const session = await lobby.requireSession(request.params.id);
-      if (user.role === 'TRAINEE') {
+      if (user.role === 'INSTRUCTOR') {
+        await access.assertInstructor(user, session);
+      } else {
         const me = await store.findPlayerByUser(session.id, user.id);
         if (!me || me.teamId !== request.params.teamId) {
           throw new HttpError(403, 'FORBIDDEN', "You can only set your own team's PACE plan");
@@ -230,7 +242,7 @@ export function registerSessionRoutes(
     '/sessions/:id/players/:playerId',
     instructor,
     guarded<{ id: string; playerId: string }>(async (request, reply) => {
-      const session = await lobby.requireSession(request.params.id);
+      const session = await access.requireInstructor(userOf(request), request.params.id);
       await lobby.assignPlayer(
         session,
         request.params.playerId,
@@ -245,7 +257,7 @@ export function registerSessionRoutes(
       `/sessions/:id/${name}`,
       instructor,
       guarded<Id>(async (request, reply) => {
-        const session = await lobby.requireSession(request.params.id);
+        const session = await access.requireInstructor(userOf(request), request.params.id);
         await manager[name](session.id);
         return respondWithLobby(session, reply);
       }),
@@ -262,9 +274,65 @@ export function registerSessionRoutes(
     '/sessions/:id/speed',
     instructor,
     guarded<Id>(async (request, reply) => {
-      const session = await lobby.requireSession(request.params.id);
+      const session = await access.requireInstructor(userOf(request), request.params.id);
       await manager.setSpeed(session.id, parse(setSpeedBodySchema, request.body).speed);
       return respondWithLobby(session, reply);
+    }),
+  );
+
+  async function instructorsOf(session: SessionRow): Promise<SessionInstructorsResponse> {
+    const brief = async (id: string) => {
+      const u = await users.findById(id);
+      return u ? [{ id: u.id, name: u.name, email: u.email }] : [];
+    };
+    const ids = await store.listCoInstructors(session.id);
+    return {
+      owner: session.ownerId === null ? null : ((await brief(session.ownerId))[0] ?? null),
+      coInstructors: (await Promise.all(ids.map(brief))).flat(),
+    };
+  }
+
+  /** Who may run and review this exercise (any of its instructors may look). */
+  app.get(
+    '/sessions/:id/instructors',
+    instructor,
+    guarded<Id>(async (request) =>
+      instructorsOf(await access.requireInstructor(userOf(request), request.params.id)),
+    ),
+  );
+
+  /** The owner shares the exercise with another instructor account. */
+  app.post(
+    '/sessions/:id/instructors',
+    instructor,
+    guarded<Id>(async (request, reply) => {
+      const session = await access.requireOwner(userOf(request), request.params.id);
+      const { email } = parse(addCoInstructorBodySchema, request.body);
+      const target = await users.findByEmail(email);
+      // One answer for "no such account" and "not an instructor", so this does not reveal accounts.
+      if (!target || target.role !== 'INSTRUCTOR') {
+        throw new HttpError(404, 'NOT_FOUND', 'No instructor account with that email');
+      }
+      if (target.id === session.ownerId) {
+        throw new HttpError(409, 'CONFLICT', 'The owner already runs this exercise');
+      }
+      await store.addCoInstructor(session.id, target.id);
+      reply.status(201);
+      return instructorsOf(session);
+    }),
+  );
+
+  /** The owner withdraws a co-instructor; their open sockets for this exercise are dropped at once. */
+  app.delete(
+    '/sessions/:id/instructors/:userId',
+    instructor,
+    guarded<{ id: string; userId: string }>(async (request) => {
+      const session = await access.requireOwner(userOf(request), request.params.id);
+      if (!(await store.removeCoInstructor(session.id, request.params.userId))) {
+        throw new HttpError(404, 'NOT_FOUND', 'That instructor is not on this exercise');
+      }
+      await manager.disconnectUser(session.id, request.params.userId);
+      return instructorsOf(session);
     }),
   );
 }

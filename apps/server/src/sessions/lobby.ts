@@ -55,11 +55,16 @@ export class LobbyService {
     }
   }
 
-  async createSession(scenarioId: string, profile?: SessionProfile): Promise<SessionRow> {
+  /** Creates a session owned by `ownerId` (the instructor creating it). */
+  async createSession(
+    scenarioId: string,
+    ownerId: string,
+    profile?: SessionProfile,
+  ): Promise<SessionRow> {
     await this.requireDefinition(scenarioId);
     for (let attempt = 0; attempt < 8; attempt++) {
       try {
-        return await this.store.createSession(scenarioId, this.newCode(), profile);
+        return await this.store.createSession(scenarioId, this.newCode(), ownerId, profile);
       } catch (err) {
         if (!(err instanceof CodeTakenError)) throw err;
       }
@@ -71,8 +76,11 @@ export class LobbyService {
    * A baseline twin of a finished exercise: the same scenario (so the same seed and MSEL) with every
    * degradation switched off, and the same teams and PACE plans waiting in its lobby. The trainees
    * join it with its own code, so the review can compare the same person in both runs.
+   *
+   * The instructor who asks for it owns the twin. Everyone who could instruct the source (its owner and
+   * co-instructors) becomes a co-instructor of the twin, so the pair stays reviewable by the same people.
    */
-  async createBaseline(source: SessionRow): Promise<SessionRow> {
+  async createBaseline(source: SessionRow, ownerId: string): Promise<SessionRow> {
     if (source.status !== 'ENDED' || !source.startedAt) {
       throw new HttpError(
         409,
@@ -83,10 +91,14 @@ export class LobbyService {
     if (source.clean) {
       throw new HttpError(409, 'CONFLICT', 'This session is already a baseline run');
     }
-    const twin = await this.createSession(source.scenarioId, {
+    const twin = await this.createSession(source.scenarioId, ownerId, {
       clean: true,
       baselineOfId: source.id,
     });
+    const sharedWith = new Set(await this.store.listCoInstructors(source.id));
+    if (source.ownerId !== null) sharedWith.add(source.ownerId);
+    sharedWith.delete(ownerId);
+    for (const userId of sharedWith) await this.store.addCoInstructor(twin.id, userId);
     for (const team of await this.store.listTeams(source.id)) {
       await this.store.createTeam(twin.id, team.name, team.pace);
     }

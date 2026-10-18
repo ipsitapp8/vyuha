@@ -15,7 +15,8 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "geo:fallback": "tsx scripts/generate-geo-fallback.ts",
-    "demo:history": "tsx scripts/demo-history.ts"
+    "demo:history": "tsx scripts/demo-history.ts",
+    "sessions:assign-owner": "tsx scripts/assign-session-owner.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",

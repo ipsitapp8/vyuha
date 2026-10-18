@@ -61,6 +61,9 @@ const MAX_LAG_MS = 5000;
 const MAX_PENDING_INPUTS = 200;
 const DEFAULT_WEATHER = { visibilityM: 10_000, precipitationMm: 0, windKph: 0 };
 
+/** The part of a socket's server-side data that names its signed-in user (set by the socket handlers). */
+const socketUserSchema = z.object({ user: z.object({ id: z.string() }) });
+
 export const room = {
   session: (id: string): string => `session:${id}`,
   player: (id: string, playerId: string): string => `session:${id}:player:${playerId}`,
@@ -553,6 +556,18 @@ export class SessionManager {
         .emit(SOCKET_EVENTS.lobbyUpdate, await this.lobby.view(session));
     } catch (err) {
       this.log.error({ err, sessionId }, 'lobby broadcast failed');
+    }
+  }
+
+  /**
+   * Drops every socket of `userId` that is joined to this session, so an instructor whose access was
+   * withdrawn stops receiving the truth view straight away (a reconnect has to pass the join check again).
+   */
+  async disconnectUser(sessionId: string, userId: string): Promise<void> {
+    const sockets = await this.io.in(room.session(sessionId)).fetchSockets();
+    for (const socket of sockets) {
+      const owner = socketUserSchema.safeParse(socket.data);
+      if (owner.success && owner.data.user.id === userId) socket.disconnect(true);
     }
   }
 
