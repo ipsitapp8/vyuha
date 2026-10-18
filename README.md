@@ -19,7 +19,7 @@ pnpm install
 pnpm db:migrate              # prisma migrate dev
 pnpm dev                     # server :4000, web :5173
 ```
-Open http://localhost:5173 and choose **Instructor login** or **Trainee login** (demo accounts after `pnpm db:seed`: `instructor@vyuha.local` and `trainee1@vyuha.local` to `trainee3@vyuha.local`, password `Vyuha@123`; development only, see below). Trainees can create their own account; instructor accounts are issued by an administrator. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
+Open http://localhost:5173 and choose **Instructor login** or **Trainee login** (demo accounts after `pnpm db:seed`: `instructor@vyuha.local` and `trainee1@vyuha.local` to `trainee6@vyuha.local`, password `Vyuha@123`; both sign-in pages show them in a **Demo access** box, hidden with `VITE_SHOW_DEMO_LOGIN=false`). The published password is for development and for a deliberate public demo only: production refuses it unless `DEMO_MODE=true` (see below). Trainees can create their own account; instructor accounts are issued by an administrator. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
 
 ## Demo script for judges (5 steps, about 10 minutes)
 
@@ -60,7 +60,7 @@ Secure by default:
 | Database port | Not published on the host. Only the server reaches PostgreSQL, over the stack's private network. `pnpm db:up` (adds `docker-compose.dev.yml`) publishes it on `127.0.0.1` for local development; `POSTGRES_HOST_PORT` picks another port. |
 | Secrets | `POSTGRES_PASSWORD` and `JWT_SECRET` have no defaults: `docker compose` stops with a message until they are set. Use letters and digits (`openssl rand -hex …`), because they go into URLs. |
 | Demo accounts | With `SEED_ON_START=true` (default) the seed refuses to run without a `SEED_PASSWORD` of 12+ characters that is not the published one. Set `SEED_ON_START=false` once real accounts exist. |
-| Production refusals | The server will not start in production with the placeholder `JWT_SECRET`, an empty or published database password, or a demo account that still accepts the published password. |
+| Production refusals | The server will not start in production with the placeholder `JWT_SECRET`, an empty or published database password, or a demo account that still accepts the published password (unless `DEMO_MODE=true`, the explicit public-demo opt-in the Render blueprint uses; it warns on every start). |
 | Containers | The server runs as `node` (uid 1000) and the web as `nginx` (uid 101, port 8080 inside the container). Both have read-only root filesystems with only `/tmp` writable and `no-new-privileges`. |
 
 **Upgrading an existing stack.** PostgreSQL sets its password only when the `pgdata` volume is first created, so a new `POSTGRES_PASSWORD` does not change an existing database. To move off the old published password, start only the database with the old value, then set the new one:

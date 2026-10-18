@@ -47,6 +47,15 @@ const envSchema = z.object({
     z.string().min(32, 'METRICS_TOKEN must be at least 32 characters').optional(),
   ),
   /**
+   * A deliberate public demo (render.yaml): production may then seed and keep the published demo password
+   * shown on the sign-in pages, and start-up warns instead of refusing. Anyone can sign in as the demo
+   * instructor, so never set it for a real exercise deployment.
+   */
+  DEMO_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /**
    * How many reverse proxies stand between the internet and this server. The client address is then
    * read that many entries from the RIGHT of X-Forwarded-For, i.e. the entry the outermost trusted proxy
    * appended; entries further left are client-supplied and never trusted. `false` (default) uses the

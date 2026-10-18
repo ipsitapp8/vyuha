@@ -28,12 +28,12 @@ export const DEMO_ACCOUNT_EMAILS: readonly string[] = [
 
 /**
  * The password the seed gives new demo accounts. Production must name its own (SEED_PASSWORD, at least
- * 12 characters, never the published one); development falls back to the published one.
- * Errors never include the value.
+ * 12 characters, never the published one) unless DEMO_MODE=true opts into a public demo; development
+ * and a public demo fall back to the published one. Errors never include the value.
  */
 export function resolveSeedPassword(env: NodeJS.ProcessEnv): string {
   const given = env['SEED_PASSWORD'];
-  if (env['NODE_ENV'] !== 'production')
+  if (env['NODE_ENV'] !== 'production' || env['DEMO_MODE'] === 'true')
     return given && given.length > 0 ? given : PUBLISHED_DEMO_PASSWORD;
   if (!given) {
     throw new Error(
@@ -67,10 +67,21 @@ export async function accountsWithPublishedPassword(lookup: HashLookup): Promise
 
 /**
  * Production start-up gate: refuses to serve while any demo account still signs in with the published
- * password (for example a database seeded before SEED_PASSWORD was required).
+ * password (for example a database seeded before SEED_PASSWORD was required). With DEMO_MODE=true (a
+ * deliberate public demo) it only warns, every start, so the choice is never silent.
  */
-export async function assertNoPublishedDemoPasswords(lookup: HashLookup): Promise<void> {
+export async function assertNoPublishedDemoPasswords(
+  lookup: HashLookup,
+  options: { demoMode?: boolean; warn?: (message: string) => void } = {},
+): Promise<void> {
   const exposed = await accountsWithPublishedPassword(lookup);
+  if (exposed.length > 0 && options.demoMode) {
+    (options.warn ?? console.warn)(
+      `DEMO_MODE is on: ${exposed.length} demo account(s) (${exposed.join(', ')}) accept the published ` +
+        'demo password, so anyone can sign in as them. Never use DEMO_MODE for a real exercise deployment.',
+    );
+    return;
+  }
   if (exposed.length > 0) {
     throw new Error(
       `Refusing to start: ${exposed.length} demo account(s) (${exposed.join(', ')}) still use the ` +

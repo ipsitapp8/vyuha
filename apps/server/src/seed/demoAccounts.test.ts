@@ -34,6 +34,36 @@ describe('resolveSeedPassword', () => {
   });
 });
 
+describe('DEMO_MODE (deliberate public demo)', () => {
+  it('lets production seed the published password only with the explicit opt-in', () => {
+    const prod = { NODE_ENV: 'production' };
+    expect(() => resolveSeedPassword({ ...prod, SEED_PASSWORD: PUBLISHED_DEMO_PASSWORD })).toThrow(
+      /published/,
+    );
+    expect(
+      resolveSeedPassword({ ...prod, DEMO_MODE: 'true', SEED_PASSWORD: PUBLISHED_DEMO_PASSWORD }),
+    ).toBe(PUBLISHED_DEMO_PASSWORD);
+    expect(resolveSeedPassword({ ...prod, DEMO_MODE: 'true' })).toBe(PUBLISHED_DEMO_PASSWORD);
+    // any other value is not the opt-in
+    expect(() => resolveSeedPassword({ ...prod, DEMO_MODE: 'yes' })).toThrow(/SEED_PASSWORD/);
+  });
+
+  it('turns the start-up refusal into a warning on every start, never silence', async () => {
+    const published = bcrypt.hashSync(PUBLISHED_DEMO_PASSWORD, 4);
+    const lookup = async () => published;
+    const warnings: string[] = [];
+    await expect(
+      assertNoPublishedDemoPasswords(lookup, { demoMode: true, warn: (m) => warnings.push(m) }),
+    ).resolves.toBeUndefined();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/DEMO_MODE is on: 7 demo account\(s\)/);
+    expect(warnings[0]).not.toContain(PUBLISHED_DEMO_PASSWORD);
+    await expect(assertNoPublishedDemoPasswords(lookup, { demoMode: false })).rejects.toThrow(
+      /Refusing to start/,
+    );
+  });
+});
+
 describe('published demo password detection', () => {
   const published = bcrypt.hashSync(PUBLISHED_DEMO_PASSWORD, 4);
   const other = bcrypt.hashSync(STRONG, 4);

@@ -7,6 +7,7 @@ import { loginBodySchema, type LoginBody, type Role } from '@vyuha/shared';
 import { useAuth } from '@/auth/AuthContext';
 import { homePathFor } from '@/auth/guards';
 import { AppHeader } from '@/components/AppHeader';
+import { DemoAccess } from '@/components/DemoAccess';
 import { FormField } from '@/components/FormField';
 import { Button } from '@/components/ui/button';
 import { ApiRequestError } from '@/lib/api';
@@ -29,22 +30,28 @@ export function LoginPage({ portal }: { portal: Role }) {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginBody>({ resolver: zodResolver(loginBodySchema) });
 
-  const onSubmit = handleSubmit(async (values) => {
-    setSubmitError(null);
-    try {
-      const user = await login({ ...values, portal });
-      navigate(homePathFor(user.role), { replace: true });
-    } catch (err) {
-      setSubmitError(
-        err instanceof ApiRequestError && err.status === 403
-          ? t(`auth.portal.${portal}.wrongAccount`)
-          : apiErrorText(t, err),
-      );
-    }
-  });
+  // A submit that fails the form's own checks drops the previous server message so it never sits beside
+  // the new field errors.
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setSubmitError(null);
+      try {
+        const user = await login({ ...values, portal });
+        navigate(homePathFor(user.role), { replace: true });
+      } catch (err) {
+        setSubmitError(
+          err instanceof ApiRequestError && err.status === 403
+            ? t(`auth.portal.${portal}.wrongAccount`)
+            : apiErrorText(t, err),
+        );
+      }
+    },
+    () => setSubmitError(null),
+  );
 
   const other = OTHER_PORTAL[portal];
   return (
@@ -84,6 +91,14 @@ export function LoginPage({ portal }: { portal: Role }) {
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? t('auth.signingIn') : t('auth.signInTitle')}
           </Button>
+          <DemoAccess
+            role={portal}
+            onFill={(email, password) => {
+              setSubmitError(null);
+              setValue('email', email, { shouldValidate: true });
+              setValue('password', password, { shouldValidate: true });
+            }}
+          />
           {portal === 'TRAINEE' ? (
             <p className="text-center text-sm text-muted-foreground">
               {t('auth.newTrainee')}{' '}

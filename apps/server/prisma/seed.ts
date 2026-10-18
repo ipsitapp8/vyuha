@@ -17,12 +17,18 @@ import { SEED_SCENARIOS } from '../src/seed/scenarios';
 async function main(): Promise<void> {
   // Validates the whole environment first (JWT secret, database password rules in production).
   const config = loadConfig();
-  // Demo accounts share one password: the published one in development, SEED_PASSWORD in production.
+  // Demo accounts share one password: the published one in development, SEED_PASSWORD in production
+  // (which may be the published one only with DEMO_MODE=true, a deliberate public demo).
   const demoPassword = resolveSeedPassword(process.env);
+  /**
+   * SEED_RESET_PASSWORDS=true sets the demo accounts back to that password on every start, so the demo login
+   * shown on the sign-in pages keeps working. Leave it off for a real deployment: accounts then keep their own.
+   */
+  const resetPasswords = process.env['SEED_RESET_PASSWORDS'] === 'true';
 
   const instructor = await prisma.user.upsert({
     where: { email: DEMO_INSTRUCTOR.email },
-    update: {},
+    update: resetPasswords ? { passwordHash: await hashPassword(demoPassword) } : {},
     create: {
       name: DEMO_INSTRUCTOR.name,
       email: DEMO_INSTRUCTOR.email,
@@ -35,14 +41,14 @@ async function main(): Promise<void> {
     const email = demoTraineeEmail(i);
     await prisma.user.upsert({
       where: { email },
-      update: {},
+      update: resetPasswords ? { passwordHash: await hashPassword(demoPassword) } : {},
       create: { name, email, passwordHash: await hashPassword(demoPassword), role: 'TRAINEE' },
     });
   }
 
   // Production never keeps the published password: demo accounts created by an older seed get
   // SEED_PASSWORD instead. Other passwords (changed by their users) are left alone.
-  if (config.NODE_ENV === 'production') {
+  if (config.NODE_ENV === 'production' && !config.DEMO_MODE) {
     const exposed = await accountsWithPublishedPassword(
       async (email) =>
         (await prisma.user.findUnique({ where: { email }, select: { passwordHash: true } }))

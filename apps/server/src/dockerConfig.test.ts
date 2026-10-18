@@ -63,6 +63,22 @@ describe('docker-compose.yml', () => {
   });
 });
 
+describe('public demo versus strict deployments', () => {
+  it('only the Render blueprint opts into the published demo password, explicitly', () => {
+    const render = read('render.yaml');
+    expect(render).toMatch(/- key: DEMO_MODE\s*\n\s+value: 'true'/);
+    // the opt-in and the published password travel together; nothing else may use that password
+    expect(render).toMatch(/- key: SEED_PASSWORD\s*\n\s+value: Vyuha@123/);
+    expect(compose).not.toContain('DEMO_MODE');
+    expect(compose).not.toContain('SEED_RESET_PASSWORDS');
+  });
+
+  it('hides the demo-login box in the strict Docker Compose stack by default', () => {
+    expect(service(compose, 'web')).toContain('VITE_SHOW_DEMO_LOGIN: ${SHOW_DEMO_LOGIN:-false}');
+    expect(read('apps/web/Dockerfile')).toMatch(/^ARG VITE_SHOW_DEMO_LOGIN=false$/m);
+  });
+});
+
 describe('readiness and single instance', () => {
   it('starts the web only once the server is ready, and Render runs exactly one instance', () => {
     expect(service(compose, 'server')).toContain("fetch('http://127.0.0.1:4000/health/ready')");

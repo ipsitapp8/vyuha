@@ -17,6 +17,7 @@ async function main(): Promise<void> {
       async (email) =>
         (await prisma.user.findUnique({ where: { email }, select: { passwordHash: true } }))
           ?.passwordHash ?? null,
+      { demoMode: config.DEMO_MODE },
     );
   }
   const { fastify, io, manager } = await buildApp(config, buildDeps(config));

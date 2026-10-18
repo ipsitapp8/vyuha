@@ -144,7 +144,9 @@ with a message naming the variable, never its value):
 | `TRUST_PROXY` | no | number of reverse proxies in front (`true` = 1); the client address is read that many entries from the right of `X-Forwarded-For`, so forged entries are ignored. Leave `false` when the server is reachable directly |
 | `API_PREFIX`, `WEB_DIST_DIR` | no | single-image deployment (`/api`, built web app) |
 | `METRICS_TOKEN` | no | 32+ characters; unset = no `/metrics` |
-| `SEED_ON_START`, `SEED_PASSWORD` | no / with seed in production | seed demo data; production needs 12+ characters, never the published demo password |
+| `SEED_ON_START`, `SEED_PASSWORD` | no / with seed in production | seed demo data; production needs 12+ characters, never the published demo password (unless `DEMO_MODE`) |
+| `SEED_RESET_PASSWORDS` | no | `true` sets the demo accounts back to `SEED_PASSWORD` on every start (public demo) |
+| `DEMO_MODE` | no | `true` = deliberate public demo (Render blueprint): production may run with the published demo password and warns on every start instead of refusing. Never for real exercises |
 | `OPEN_METEO_ELEVATION_URL`, `OPEN_METEO_FORECAST_URL` | no | point at a local mirror |
 
 Migrations live in `apps/server/prisma/migrations` and are applied with `prisma migrate deploy` (the

@@ -75,6 +75,9 @@ services:
         VITE_MAP_MODE: ${MAP_MODE:-offline}
         VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
         VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}
+        # The sign-in pages' "Demo access" box shows the published demo password, which this stack refuses
+        # (SEED_PASSWORD is your own); it stays hidden unless you set SHOW_DEMO_LOGIN=true for a demo.
+        VITE_SHOW_DEMO_LOGIN: ${SHOW_DEMO_LOGIN:-false}
     restart: unless-stopped
     depends_on:
       server:

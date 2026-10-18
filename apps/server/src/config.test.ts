@@ -46,6 +46,11 @@ describe('loadConfig', () => {
     // Local development keeps working with the old example password.
     expect(loadConfig({ ...valid, DATABASE_URL: published }).NODE_ENV).toBe('development');
   });
+  it('reads DEMO_MODE strictly and defaults to off', () => {
+    expect(loadConfig(valid).DEMO_MODE).toBe(false);
+    expect(loadConfig({ ...valid, DEMO_MODE: 'true' }).DEMO_MODE).toBe(true);
+    expect(() => loadConfig({ ...valid, DEMO_MODE: 'yes' })).toThrow(/DEMO_MODE/);
+  });
   it('rejects a short JWT secret', () => {
     expect(() => loadConfig({ ...valid, JWT_SECRET: 'short' })).toThrow(/JWT_SECRET/);
   });

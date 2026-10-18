@@ -12,15 +12,27 @@ export function LandingPage() {
     <>
       <AppHeader />
       <main>
-        <section className="vy-hero">
-          <img className="vy-hero-photo" src="/landing-hero.jpg" alt="" />
-          <div className="mx-auto max-w-7xl px-4 py-14 lg:py-16">
-            <h1 className="max-w-2xl text-4xl font-bold leading-tight sm:text-5xl">
+        <section className="relative flex min-h-[22rem] items-center overflow-hidden border-b border-border bg-secondary sm:min-h-[26rem]">
+          {/* Army photo behind the hero; a dark fade on the left keeps the white heading and text readable. */}
+          <div
+            aria-hidden="true"
+            className="vy-hero-art pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: `url(${import.meta.env.BASE_URL}hero-army.jpg)`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'right 62%',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="vy-hero-art pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b1a2b]/95 via-[#0b1a2b]/70 to-transparent"
+          />
+          <div className="relative mx-auto w-full max-w-7xl px-4 py-12">
+            <h1 className="max-w-3xl text-3xl font-bold text-white sm:text-4xl">
               {t('landing.heroTitle')}
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/95">
-              {t('landing.heroBody')}
-            </p>
+            <p className="mt-4 max-w-3xl text-lg text-white">{t('landing.heroBody')}</p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link
                 to="/login"
