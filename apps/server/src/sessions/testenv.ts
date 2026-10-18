@@ -4,6 +4,7 @@ import { hashPassword } from '../auth';
 import { bundledGeo } from '../geo/bundled';
 import { SILENT_RIDGE_ID, silentRidge } from '../seed/silentRidge';
 import { createMemoryDeps, memoryGeo, testConfig } from '../testing';
+import type { Config } from '../config';
 import type { Scheduler } from './manager';
 import type { RateLimiter } from './socket';
 
@@ -57,7 +58,9 @@ export interface Env {
   ): Promise<{ status: number; body: unknown }>;
 }
 
-export async function makeEnv(opts: { limiter?: RateLimiter } = {}): Promise<Env> {
+export async function makeEnv(
+  opts: { limiter?: RateLimiter; socketRevalidateMs?: number; config?: Config } = {},
+): Promise<Env> {
   const geo = memoryGeo({ [SILENT_RIDGE_ID]: silentRidge.areaBounds });
   const bundled = bundledGeo(SILENT_RIDGE_ID);
   if (!bundled) throw new Error('bundled geodata missing');
@@ -77,9 +80,10 @@ export async function makeEnv(opts: { limiter?: RateLimiter } = {}): Promise<Env
     mem.users.set(t.id, { ...t, role: 'TRAINEE', passwordHash: hash });
   }
   const scheduler = manualScheduler();
-  const app = await buildApp(testConfig, mem.deps, {
+  const app = await buildApp(opts.config ?? testConfig, mem.deps, {
     scheduler,
     ...(opts.limiter ? { limiter: opts.limiter } : {}),
+    ...(opts.socketRevalidateMs ? { socketRevalidateMs: opts.socketRevalidateMs } : {}),
   });
 
   const cookies = new Map<string, string>();
@@ -115,14 +119,20 @@ export async function closeEnv(env: Env | undefined): Promise<void> {
   await env.app.fastify.close();
 }
 
-/** Creates a session, joins the three trainees and assigns them to one team (PL / section / ISR). */
-export async function setupLobby(env: Env): Promise<{
+/**
+ * Creates a session (owned by `instructor`), joins the three trainees and assigns them to one team
+ * (PL / section / ISR).
+ */
+export async function setupLobby(
+  env: Env,
+  instructor = 'inst@x.io',
+): Promise<{
   sessionId: string;
   code: string;
   players: Record<'pl' | 'sec' | 'isr', string>;
   teamId: string;
 }> {
-  const created = await env.api('POST', '/sessions', 'inst@x.io', { scenarioId: SILENT_RIDGE_ID });
+  const created = await env.api('POST', '/sessions', instructor, { scenarioId: SILENT_RIDGE_ID });
   const view = created.body as LobbyView;
   const sessionId = view.session.id;
   const code = view.session.code;
@@ -135,12 +145,12 @@ export async function setupLobby(env: Env): Promise<{
     const j = await env.api('POST', '/sessions/join', email, { code });
     joined[key] = (j.body as { playerId: string }).playerId;
   }
-  const team = await env.api('POST', `/sessions/${sessionId}/teams`, 'inst@x.io', {
+  const team = await env.api('POST', `/sessions/${sessionId}/teams`, instructor, {
     name: 'Alpha',
   });
   const teamId = (team.body as LobbyView).teams[0]?.id ?? '';
   const assign = (playerId: string, role: string, unitId: string) =>
-    env.api('PUT', `/sessions/${sessionId}/players/${playerId}`, 'inst@x.io', {
+    env.api('PUT', `/sessions/${sessionId}/players/${playerId}`, instructor, {
       teamId,
       role,
       unitId,

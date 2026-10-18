@@ -312,11 +312,18 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
       });
       return u;
     },
-    async listTrainees() {
+    async listTrainees(countedSessionIds) {
       const users = await prisma.user.findMany({
         where: { role: 'TRAINEE' },
         orderBy: [{ isDemoBot: 'asc' }, { name: 'asc' }],
-        select: { id: true, name: true, isDemoBot: true, _count: { select: { metrics: true } } },
+        select: {
+          id: true,
+          name: true,
+          isDemoBot: true,
+          _count: {
+            select: { metrics: { where: { sessionId: { in: [...countedSessionIds] } } } },
+          },
+        },
       });
       return users.map((u) => ({
         id: u.id,

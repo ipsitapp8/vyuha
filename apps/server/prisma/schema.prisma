@@ -34,6 +34,8 @@ model User {
   role          Role
   /// Scripted demo trainee created by `pnpm demo:history`; shown as "Demo bot" in the UI.
   isDemoBot     Boolean             @default(false)
+  /// Part of every sign-in token; signing out increments it, so every earlier token of this user stops working.
+  tokenVersion  Int                 @default(0)
   createdAt     DateTime            @default(now())
   scenarios     Scenario[]
   players       Player[]

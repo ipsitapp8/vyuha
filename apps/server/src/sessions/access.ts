@@ -24,6 +24,15 @@ export class SessionAccess {
     return (await this.store.isCoInstructor(session.id, user.id)) ? 'CO_INSTRUCTOR' : null;
   }
 
+  /**
+   * Every session this user may run and review: the ones they own or were added to. Empty for anyone
+   * who is not an instructor. Used to scope data that spans sessions (progress, the PDF's history).
+   */
+  async instructableSessionIds(user: PublicUser): Promise<Set<string>> {
+    if (user.role !== 'INSTRUCTOR') return new Set();
+    return new Set((await this.store.listSessionsForInstructor(user.id)).map((s) => s.id));
+  }
+
   /** True when the session exists and the user may instruct it (for redacting, not for gating). */
   async canInstruct(user: PublicUser, sessionId: string): Promise<boolean> {
     const session = await this.store.getSession(sessionId);

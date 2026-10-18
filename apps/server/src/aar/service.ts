@@ -68,8 +68,14 @@ export class AarService {
     return pending;
   }
 
-  /** Each trainee's sessions so far (up to and including this one), for the "Progress so far" section. */
-  private async progressByPlayer(sessionId: string): Promise<ProgressByPlayer> {
+  /**
+   * Each trainee's sessions so far (up to and including this one), for the "Progress so far" section,
+   * limited to the sessions the reader may review: other instructors' sessions never appear.
+   */
+  private async progressByPlayer(
+    sessionId: string,
+    visible: ReadonlySet<string>,
+  ): Promise<ProgressByPlayer> {
     const [playerRows, session] = await Promise.all([
       this.store.listPlayers(sessionId),
       this.store.getSession(sessionId),
@@ -78,7 +84,7 @@ export class AarService {
     const out: ProgressByPlayer = {};
     for (const p of playerRows) {
       const rows = (await this.store.listUserProgress(p.userId)).filter(
-        (r) => r.endedAt.getTime() <= until,
+        (r) => r.endedAt.getTime() <= until && visible.has(r.sessionId),
       );
       out[p.id] = rows.map((r) => ({
         sessionId: r.sessionId,
@@ -340,11 +346,15 @@ export class AarService {
     };
   }
 
-  async pdf(sessionId: string): Promise<{ filename: string; body: Buffer }> {
+  /** `visible`: the sessions the requesting instructor may review (scopes "Progress so far"). */
+  async pdf(
+    sessionId: string,
+    visible: ReadonlySet<string>,
+  ): Promise<{ filename: string; body: Buffer }> {
     const { summary } = await this.data(sessionId);
     return {
       filename: `vyuha-aar-${summary.meta.code}.pdf`,
-      body: await renderAarPdf(summary, await this.progressByPlayer(sessionId)),
+      body: await renderAarPdf(summary, await this.progressByPlayer(sessionId, visible)),
     };
   }
 }

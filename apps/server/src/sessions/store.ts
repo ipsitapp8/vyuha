@@ -168,6 +168,11 @@ export interface SessionStore {
   /** A trainee's metrics for every ended session, oldest first. */
   listUserProgress(userId: string): Promise<UserProgressRow[]>;
   getUserBrief(userId: string): Promise<TraineeBrief | null>;
-  /** Every trainee account with the number of sessions that have metrics. */
-  listTrainees(): Promise<(TraineeBrief & { sessionCount: number })[]>;
+  /**
+   * Every trainee account with the number of its metric rows that belong to `countedSessionIds` (the
+   * sessions the reader may review); metrics from any other session are never counted.
+   */
+  listTrainees(
+    countedSessionIds: ReadonlySet<string>,
+  ): Promise<(TraineeBrief & { sessionCount: number })[]>;
 }

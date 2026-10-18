@@ -7,6 +7,8 @@ export interface UserRecord extends PublicUser {
   passwordHash: string;
   /** Scripted demo trainee; never signs in. */
   isDemoBot?: boolean;
+  /** Sign-in tokens carry this; a token with an older value is revoked. Missing = 0 (test fixtures). */
+  tokenVersion?: number;
 }
 
 export class EmailTakenError extends Error {
@@ -25,6 +27,8 @@ export interface UserRepo {
     passwordHash: string;
     role: Role;
   }): Promise<UserRecord>;
+  /** Revokes every sign-in token issued to the user so far (increments `tokenVersion`). */
+  revokeTokens(id: string): Promise<void>;
 }
 
 export interface ScenarioRepo {

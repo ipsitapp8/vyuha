@@ -11,6 +11,7 @@ import type { Config } from './config';
 import { registerAarRoutes } from './aar/routes';
 import { AarService } from './aar/service';
 import { registerAuth } from './auth';
+import { registerMetrics } from './metrics';
 import { registerProgressRoutes } from './progress/routes';
 import { ProgressService } from './progress/service';
 import { registerScenarioRoutes } from './scenarioRoutes';
@@ -21,7 +22,7 @@ import { SessionAccess } from './sessions/access';
 import { LobbyService } from './sessions/lobby';
 import { SessionManager, type Scheduler } from './sessions/manager';
 import { registerSessionRoutes } from './sessions/routes';
-import { RateLimiter, attachSocketHandlers } from './sessions/socket';
+import { RateLimiter, attachSocketHandlers, disconnectUserSockets } from './sessions/socket';
 
 export type { Deps, DbProbe } from './repos';
 
@@ -36,6 +37,12 @@ export interface AppOptions {
   limiter?: RateLimiter;
   /** Throttles /auth/login and /auth/register per client address. */
   authLimiter?: RateLimiter;
+  /** Throttles /auth/login per account (email), whatever address the attempts come from. */
+  accountLimiter?: RateLimiter;
+  /** Server-wide budget for new accounts, independent of addresses (see `registrationBudget`). */
+  registrationLimiter?: RateLimiter;
+  /** How often idle sockets re-read their account (tests shorten it). */
+  socketRevalidateMs?: number;
 }
 
 /** Largest accepted JSON body (MSEL imports are the biggest legitimate payload). */
@@ -52,6 +59,29 @@ export const LOG_REDACT = [
   'res.headers["set-cookie"]',
 ];
 
+/**
+ * Fastify's `trustProxy: true` would take the LEFT-most X-Forwarded-For entry, which the client writes
+ * itself, so every request could claim a fresh address and walk past the per-address rate limits. A hop
+ * count makes it read only the entry the trusted proxy appended. `true` therefore means one hop.
+ */
+export function proxyHops(setting: boolean | number): number {
+  if (setting === true) return 1;
+  return setting === false || setting <= 0 ? 0 : setting;
+}
+
+/** Fastify trust function: hop 0 is the socket peer; trust exactly the first `hops` of them. */
+function trustFirstHops(hops: number): boolean | ((address: string, hop: number) => boolean) {
+  return hops === 0 ? false : (_address, hop) => hop < hops;
+}
+
+/**
+ * A browser always sends Origin on a WebSocket handshake; it must be one of the allowed origins. A
+ * request without Origin is not from a browser page, so no victim's cookie can ride along with it.
+ */
+export function originAllowed(origin: string | undefined, allowed: readonly string[]): boolean {
+  return origin === undefined || allowed.includes(origin);
+}
+
 export async function buildApp(config: Config, deps: Deps, options: AppOptions = {}): Promise<App> {
   const fastify = Fastify({
     logger:
@@ -59,7 +89,7 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
         ? false
         : { level: config.LOG_LEVEL, redact: { paths: LOG_REDACT, censor: '[redacted]' } },
     bodyLimit: BODY_LIMIT_BYTES,
-    trustProxy: config.TRUST_PROXY,
+    trustProxy: trustFirstHops(proxyHops(config.TRUST_PROXY)),
   });
   const origins = config.CORS_ORIGIN;
   const prefix = config.API_PREFIX;
@@ -67,6 +97,8 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
     // The API serves JSON, CSV and PDF downloads; when the web app is served from the same origin the
     // page also needs its own scripts, workers, tiles and the live socket.
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // helmet's default HSTS is kept on every response: browsers ignore it over plain http (RFC 6797
+    // section 8.1) and honour it once the API is reached over https.
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
@@ -101,6 +133,12 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
   const io = new SocketServer(fastify.server, {
     cors: { origin: origins, credentials: true },
     maxHttpBufferSize: SOCKET_MAX_BYTES,
+    // `cors` only covers HTTP long-polling; a WebSocket upgrade is never subject to CORS, and the browser
+    // attaches the SameSite=Lax cookie for any same-site page (another port on localhost, a sibling
+    // subdomain). Without this check such a page could open a socket as the signed-in user.
+    allowRequest: (req, callback) => {
+      callback(null, originAllowed(req.headers.origin, origins));
+    },
   });
   let manager: SessionManager | undefined;
 
@@ -108,6 +146,9 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
   await fastify.register(
     async (api) => {
       const authLimiter = options.authLimiter ?? new RateLimiter(30, 0.5);
+      // 20 attempts, then one every 10 s: slows a guessing run spread over many addresses, while a
+      // person who mistypes is never held up. (Per account, so it applies to every source address.)
+      const accountLimiter = options.accountLimiter ?? new RateLimiter(20, 0.1);
       api.addHook('onRequest', async (request, reply) => {
         const route = request.url.split('?')[0];
         if (
@@ -120,17 +161,50 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
         }
         return undefined;
       });
+      api.addHook('preHandler', async (request, reply) => {
+        if (request.method !== 'POST' || request.url.split('?')[0] !== `${prefix}/auth/login`) {
+          return undefined;
+        }
+        const email = (request.body as { email?: unknown } | null)?.email;
+        if (typeof email === 'string' && !accountLimiter.allow(email.trim().toLowerCase())) {
+          return sendError(reply, 429, 'RATE_LIMITED', 'Too many attempts, try again shortly');
+        }
+        return undefined;
+      });
 
-      const guards = registerAuth(api, config, deps.users);
+      // Account creation costs a bcrypt hash and a database row. Besides the per-address limit, a
+      // server-wide budget caps it even if addresses are wrongly attributed (proxy misconfigured, many
+      // botnet addresses): 50 at once (a class signing up together), then 30 a minute.
+      const registrationLimiter = options.registrationLimiter ?? new RateLimiter(50, 0.5);
+      // Signing out revokes the user's tokens; their open sockets are dropped at the same moment.
+      const guards = registerAuth(api, config, deps.users, {
+        onTokensRevoked: (userId) => disconnectUserSockets(io, userId),
+        allowRegistration: () => registrationLimiter.allow('registrations'),
+      });
 
-      api.get('/health', async (): Promise<HealthResponse> => {
-        let dbOk = false;
+      const dbReachable = async (): Promise<boolean> => {
         try {
-          dbOk = await deps.db.ping();
+          return await deps.db.ping();
         } catch (err) {
           api.log.warn({ err }, 'database health check failed');
+          return false;
         }
-        return { ok: true, db: dbOk };
+      };
+
+      /** Overview for people: the process answers, and whether the database does. Always 200. */
+      api.get('/health', async (): Promise<HealthResponse> => ({
+        ok: true,
+        db: await dbReachable(),
+      }));
+
+      /** Liveness: the process is up and its event loop answers (restart it if this fails). */
+      api.get('/health/live', async () => ({ ok: true }));
+
+      /** Readiness: 503 while the database is unreachable, so a load balancer or Compose holds traffic. */
+      api.get('/health/ready', async (_request, reply) => {
+        const db = await dbReachable();
+        const body: HealthResponse = { ok: db, db };
+        return reply.status(db ? 200 : 503).send(body);
       });
 
       api.get(
@@ -165,8 +239,9 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
       manager = created;
       const access = new SessionAccess(deps.sessions);
       registerSessionRoutes(api, guards, deps.sessions, lobby, created, access, deps.users);
+      registerMetrics(api, config, { manager: () => created, io, db: deps.db });
       registerAarRoutes(api, guards, new AarService(deps.sessions), access);
-      registerProgressRoutes(api, guards, progress);
+      registerProgressRoutes(api, guards, progress, access);
       attachSocketHandlers(
         io,
         config,
@@ -177,6 +252,7 @@ export async function buildApp(config: Config, deps: Deps, options: AppOptions =
         access,
         api.log,
         options.limiter,
+        options.socketRevalidateMs,
       );
     },
     { prefix },

@@ -51,7 +51,28 @@ Set by the Blueprint or the image, so you normally touch none of them:
 | `API_PREFIX`      | `/api` (image)                           | API address under the web app                                 |
 | `WEB_DIST_DIR`    | `/repo/apps/web/dist` (image)            | folder the server serves as the web app                       |
 | `COOKIE_SECURE`   | `true` (image)                           | sign-in cookie only over https                                |
-| `TRUST_PROXY`     | `true` (image)                           | rate limits count each visitor, not Render's proxy            |
+| `TRUST_PROXY`     | `1` (image)                              | proxy hops in front of the server; see "Client addresses" below |
+
+## Client addresses (verify after the first deploy)
+
+Sign-in and registration are rate limited per visitor address. Behind Render the server reads that address
+from `X-Forwarded-For`, counting `TRUST_PROXY` entries from the right (the ones Render's proxies appended);
+anything further left was written by the client and is ignored, so a forged header cannot mint new
+addresses. Render does not document how many entries its proxies append (a Render staff reply in
+[this thread](https://feedback.render.com/features/p/send-the-correct-xforwardedfor) says the real client
+address is the first one, while a user test there showed client-sent values are kept, not replaced), so
+the image assumes one and you should confirm it:
+
+1. From your own machine note your public address (`curl -s https://ifconfig.me`).
+2. `curl -s -H 'X-Forwarded-For: 192.0.2.99' https://<your-service>.onrender.com/api/health`
+3. In the service **Logs**, find that request's `remoteAddress`:
+   - your own public address: correct, nothing to do;
+   - a Render or Cloudflare address (the same for everyone): set `TRUST_PROXY=2`, redeploy, repeat;
+   - `192.0.2.99`: the value is too high (the forged entry was trusted); lower it.
+
+A value that is too low never lets a client bypass the limits, it only groups visitors who share a proxy
+address. Login is also limited per account and registration has a server-wide budget, neither of which
+depends on addresses.
 
 ## Things to know on the free plan
 
@@ -91,9 +112,14 @@ CORS_ORIGIN="http://localhost" pnpm demo:history
 ```bash
 docker build -t vyuha .
 docker run --rm -p 10000:10000 -e PORT=10000 -e COOKIE_SECURE=false \
-  -e DATABASE_URL="postgresql://vyuha:vyuha_dev_password@host.docker.internal:5432/vyuha" \
-  -e JWT_SECRET="$(openssl rand -hex 32)" \
-  -e RENDER_EXTERNAL_URL="http://localhost:10000" -e SEED_ON_START=true vyuha
+  -e DATABASE_URL="postgresql://vyuha:<POSTGRES_PASSWORD>@host.docker.internal:5432/vyuha" \
+  -e JWT_SECRET="$(openssl rand -hex 32)" -e SEED_PASSWORD="$(openssl rand -hex 16)" \
+  -e RENDER_EXTERNAL_URL="http://localhost:10000" -e SEED_ON_START=true --read-only --tmpfs /tmp vyuha
 ```
+
+The image runs as the unprivileged `node` user. In production it refuses to start with the placeholder
+`JWT_SECRET`, an empty or published database password, or a demo account that still accepts the
+published demo password; the seed refuses to run without a strong `SEED_PASSWORD`. The database on
+your machine must be reachable from the container (for example started with `pnpm db:up`).
 
 Then open http://localhost:10000.

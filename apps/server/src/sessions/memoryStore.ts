@@ -234,14 +234,16 @@ export function createMemorySessionStore(
       const u = users().get(userId);
       return u ? { id: u.id, name: u.name, isDemoBot: u.isDemoBot ?? false } : null;
     },
-    async listTrainees() {
+    async listTrainees(countedSessionIds) {
       return [...users().values()]
         .filter((u) => u.role === 'TRAINEE')
         .map((u) => ({
           id: u.id,
           name: u.name,
           isDemoBot: u.isDemoBot ?? false,
-          sessionCount: metrics.filter((m) => m.userId === u.id).length,
+          sessionCount: metrics.filter(
+            (m) => m.userId === u.id && countedSessionIds.has(m.sessionId),
+          ).length,
         }));
     },
     async loadEvents(sessionId, types) {

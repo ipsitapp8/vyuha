@@ -120,7 +120,10 @@ export function registerAarRoutes(
     instructor,
     guarded<Id>(async (request, reply) => {
       await allowed(request);
-      const f = await aar.pdf(request.params.sessionId);
+      const f = await aar.pdf(
+        request.params.sessionId,
+        await access.instructableSessionIds(userOf(request)),
+      );
       return reply
         .header('Content-Type', 'application/pdf')
         .header('Content-Disposition', `attachment; filename="${f.filename}"`)

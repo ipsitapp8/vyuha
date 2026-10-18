@@ -63,6 +63,10 @@ export function createMemoryDeps(
         users.set(rec.id, rec);
         return rec;
       },
+      revokeTokens: async (id) => {
+        const rec = users.get(id);
+        if (rec) users.set(id, { ...rec, tokenVersion: (rec.tokenVersion ?? 0) + 1 });
+      },
     },
     scenarios: {
       listSummaries: async () => scenarios,

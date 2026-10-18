@@ -25,6 +25,40 @@ async function blockExternal(page: Page): Promise<{ blocked: string[]; failed: s
 }
 
 /**
+ * Counts the map's tile range requests still in flight. MapLibre cancels tile requests it no longer
+ * needs when the view changes (switching 3D terrain on or off, a reload); doing that while the base map
+ * is still loading turns in-flight requests into net::ERR_ABORTED. `settled()` waits, bounded, until no
+ * tile request has been open for a short quiet period, which is when a person would act on the map.
+ */
+function trackTileRequests(page: Page): { settled: () => Promise<void> } {
+  const isTile = (req: Request) => new URL(req.url()).pathname.startsWith('/tiles/');
+  let open = 0;
+  let lastChange = Date.now();
+  page.on('request', (req) => {
+    if (!isTile(req)) return;
+    open += 1;
+    lastChange = Date.now();
+  });
+  const done = (req: Request) => {
+    if (!isTile(req)) return;
+    open -= 1;
+    lastChange = Date.now();
+  };
+  page.on('requestfinished', done);
+  page.on('requestfailed', done);
+  return {
+    settled: () =>
+      expect
+        .poll(() => open === 0 && Date.now() - lastChange >= 750, {
+          message: 'map tile requests settle',
+          timeout: 20_000,
+          intervals: [100],
+        })
+        .toBe(true),
+  };
+}
+
+/**
  * A running session with one trainee. Logging in through page.request also signs the browser in
  * (shared cookie jar), so the page can open the God View directly.
  */
@@ -100,7 +134,13 @@ test.describe('base map with the network unplugged', () => {
     page,
     playwright,
   }) => {
+    // Each 3D toggle animates the camera pitch (easeTo, 400 ms). Mid-animation MapLibre requests tiles for
+    // views it then leaves and cancels them, which this test would count as failed requests. With
+    // reduced motion preferred MapLibre jumps straight to the final view (the app supports the
+    // preference); the terrain, the tiles and every assertion below stay exactly the same.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     const seen = await blockExternal(page);
+    const tiles = trackTileRequests(page);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     page.on('console', (m) => {
@@ -109,6 +149,7 @@ test.describe('base map with the network unplugged', () => {
     const sessionId = await startedSession(page, playwright);
     await page.goto(`/instructor/sessions/${sessionId}`);
     await expectDrawn(page, /Ground truth map/);
+    await tiles.settled(); // the base map has finished loading before the view changes
     const map = page.getByRole('application', { name: /Ground truth map/ });
     const flat = await map.screenshot();
 
@@ -124,6 +165,7 @@ test.describe('base map with the network unplugged', () => {
       .toBe(true);
     await page.waitForTimeout(1500); // let the elevation tiles load and the camera settle
     await page.screenshot({ path: 'test-results/offline-map-3d.png' });
+    await tiles.settled();
 
     // the choice is remembered, and it switches back off cleanly
     await page.reload();
@@ -131,11 +173,14 @@ test.describe('base map with the network unplugged', () => {
       'data-terrain3d',
       'on',
     );
+    await expectDrawn(page, /Ground truth map/);
+    await tiles.settled();
     await page.getByRole('button', { name: '3D terrain' }).click();
     await expect(page.getByRole('application', { name: /Ground truth map/ })).toHaveAttribute(
       'data-terrain3d',
       'off',
     );
+    await tiles.settled();
 
     expect(seen.blocked, 'nothing tried to reach the internet').toEqual([]);
     expect(seen.failed, 'no failed requests').toEqual([]);

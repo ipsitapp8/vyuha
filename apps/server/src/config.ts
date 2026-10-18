@@ -38,17 +38,51 @@ const envSchema = z.object({
     .default(''),
   /** Folder with the built web app (apps/web/dist). When set, the server serves it as well as the API. */
   WEB_DIST_DIR: z.string().min(1).optional(),
-  /** Trust X-Forwarded-For from the hosting proxy so rate limits see each visitor's own address. */
+  /**
+   * Bearer token for GET /metrics (Prometheus text). Unset = the endpoint does not exist. 32+ characters.
+   */
+  // Empty counts as unset: Docker Compose passes `${METRICS_TOKEN:-}` through as "".
+  METRICS_TOKEN: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(32, 'METRICS_TOKEN must be at least 32 characters').optional(),
+  ),
+  /**
+   * How many reverse proxies stand between the internet and this server. The client address is then
+   * read that many entries from the RIGHT of X-Forwarded-For, i.e. the entry the outermost trusted proxy
+   * appended; entries further left are client-supplied and never trusted. `false` (default) uses the
+   * socket address; `true` means one proxy (the same as `1`); `2`..`5` for longer chains. Only set it
+   * when the server cannot be reached except through those proxies.
+   */
   TRUST_PROXY: z
-    .enum(['true', 'false'])
+    .string()
     .default('false')
-    .transform((v) => v === 'true'),
+    .refine(
+      (v) => /^(true|false|[0-5])$/.test(v),
+      'TRUST_PROXY must be false, true (one proxy) or a proxy hop count from 0 to 5',
+    )
+    .transform((v): boolean | number => {
+      if (v === 'true') return true;
+      if (v === 'false' || v === '0') return false;
+      return Number(v);
+    }),
 });
 
 export type Config = z.infer<typeof envSchema>;
 
 /** The value shipped in the example files. Fine for local development, never for production. */
 export const PLACEHOLDER_JWT_SECRET_PREFIX = 'change-me';
+
+/** Database password that older example files and Compose defaults published. Never for production. */
+export const PUBLISHED_DATABASE_PASSWORD = 'vyuha_dev_password';
+
+/** The password inside a postgres:// URL, or null when it cannot be read. */
+function databasePassword(url: string): string | null {
+  try {
+    return decodeURIComponent(new URL(url).password);
+  } catch {
+    return null;
+  }
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // Render provides the service's public address as RENDER_EXTERNAL_URL; with the web app served from
@@ -72,6 +106,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       'JWT_SECRET is still the published placeholder. Production refuses to start with it: ' +
         'set JWT_SECRET to 32 or more random characters (for example: openssl rand -hex 32).',
     );
+  }
+  if (parsed.data.NODE_ENV === 'production') {
+    // A URL that carries no password (socket / trust auth, or a secret supplied by the platform some
+    // other way) is not judged here; only an empty or published one is refused. The value is never shown.
+    const password = databasePassword(parsed.data.DATABASE_URL);
+    const hasPasswordPart = /^[a-z]+:\/\/[^/@]*:[^/@]*@/i.test(parsed.data.DATABASE_URL);
+    if (password === PUBLISHED_DATABASE_PASSWORD || (hasPasswordPart && password === '')) {
+      throw new Error(
+        'DATABASE_URL uses an empty or published database password. Production refuses to start with ' +
+          'it: set POSTGRES_PASSWORD (Docker Compose) or the database password to a random value ' +
+          '(for example: openssl rand -hex 24).',
+      );
+    }
   }
   return parsed.data;
 }

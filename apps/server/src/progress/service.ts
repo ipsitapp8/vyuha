@@ -18,6 +18,12 @@ const decisionPayloadSchema = z.object({
   latencyTicks: z.number().nullable().catch(null),
 });
 
+/**
+ * Whose sessions a reader may see metrics from: `'ALL'` for a trainee reading their own record, or the
+ * set of sessions an instructor may review (see `SessionAccess.instructableSessionIds`).
+ */
+export type VisibleSessions = ReadonlySet<string> | 'ALL';
+
 /** Turns every ended session into one row of progress numbers per trainee, and serves them back. */
 export class ProgressService {
   constructor(
@@ -79,10 +85,12 @@ export class ProgressService {
     await this.store.saveSessionMetrics(rows);
   }
 
-  async forUser(userId: string): Promise<ProgressResponse> {
+  async forUser(userId: string, visible: VisibleSessions): Promise<ProgressResponse> {
     const user = await this.store.getUserBrief(userId);
     if (!user) throw new HttpError(404, 'NOT_FOUND', 'Trainee not found');
-    const rows = await this.store.listUserProgress(userId);
+    const rows = (await this.store.listUserProgress(userId)).filter(
+      (r) => visible === 'ALL' || visible.has(r.sessionId),
+    );
     return progressResponseSchema.parse({
       user,
       sessions: rows.map((r) => ({
@@ -102,7 +110,10 @@ export class ProgressService {
     });
   }
 
-  async trainees(): Promise<ProgressTraineesResponse> {
-    return progressTraineesResponseSchema.parse({ trainees: await this.store.listTrainees() });
+  /** Every trainee, with how many of the reader's sessions they have metrics for. */
+  async trainees(visible: ReadonlySet<string>): Promise<ProgressTraineesResponse> {
+    return progressTraineesResponseSchema.parse({
+      trainees: await this.store.listTrainees(visible),
+    });
   }
 }

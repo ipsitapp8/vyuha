@@ -36,6 +36,9 @@ const users: UserRepo = {
       throw err;
     }
   },
+  async revokeTokens(id) {
+    await prisma.user.updateMany({ where: { id }, data: { tokenVersion: { increment: 1 } } });
+  },
 };
 
 const jsonArrayLength = (v: unknown): number => z.array(z.unknown()).parse(v).length;
