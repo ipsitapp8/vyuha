@@ -1,0 +1,10 @@
+# Local development only. Publishes PostgreSQL on this machine's loopback interface so `pnpm dev`,
+# `pnpm db:migrate` and `pnpm e2e` can reach it; nothing on the network can. Never use it on a shared host.
+#
+#   pnpm db:up    (= docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db)
+#
+# POSTGRES_HOST_PORT picks another port when 5432 is taken by a local PostgreSQL.
+services:
+  db:
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432'

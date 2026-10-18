@@ -117,6 +117,19 @@ export const joinSessionResponseSchema = z.object({
 });
 export type JoinSessionResponse = z.infer<typeof joinSessionResponseSchema>;
 
+/** The owner adds another instructor account (by its email) to run and review the session. */
+export const addCoInstructorBodySchema = z.object({
+  email: z.string().trim().toLowerCase().max(254).pipe(z.email('Enter a valid email address')),
+});
+export type AddCoInstructorBody = z.infer<typeof addCoInstructorBodySchema>;
+
+const sessionInstructorSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
+export const sessionInstructorsResponseSchema = z.object({
+  owner: sessionInstructorSchema.nullable(),
+  coInstructors: z.array(sessionInstructorSchema),
+});
+export type SessionInstructorsResponse = z.infer<typeof sessionInstructorsResponseSchema>;
+
 // ---- Socket contracts ----------------------------------------------------------------------
 
 export const SOCKET_EVENTS = {

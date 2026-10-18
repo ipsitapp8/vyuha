@@ -30,6 +30,8 @@ export interface DemoOptions {
   scenarios: ScenarioRepo;
   geo: GeoRepo;
   scenarioId: string;
+  /** The instructor who owns the demo sessions (so they can review them like any of their own). */
+  ownerId: string;
   /** One bot user per entry of DEMO_TEAM. */
   bots: readonly PublicUser[];
   /** Number of sessions to play (each one uses the next skill level, up to 3). */
@@ -82,7 +84,7 @@ export async function runDemoHistory(opts: DemoOptions): Promise<DemoSessionResu
   try {
     for (let k = 0; k < count; k++) {
       opts.onProgress?.(`Session ${k + 1} of ${count}: setting up`);
-      const created = await lobby.createSession(opts.scenarioId);
+      const created = await lobby.createSession(opts.scenarioId, opts.ownerId);
       const playerIds: string[] = [];
       for (const bot of opts.bots) {
         playerIds.push((await lobby.join(created.code, bot)).player.id);

@@ -9,6 +9,7 @@ import {
 } from '@vyuha/shared';
 import { csvCell, decisionsCsv } from './exports';
 import { challengedText, describeProgress, displayName } from './pdf';
+import { SILENT_RIDGE_ID } from '../seed/silentRidge';
 import { closeEnv, makeEnv, setupLobby, type Env } from '../sessions/testenv';
 
 let env: Env | undefined;
@@ -337,12 +338,14 @@ describe('progress section of the PDF', () => {
     const x = await finishedExercise();
     expect(await pdfText(x)).not.toContain('Progress so far');
 
-    // An earlier session of the same trainee makes it two.
+    // An earlier session of the same trainee, run by the same instructor, makes it two. (The PDF only
+    // shows sessions the reader may review, so the earlier one is a real session this instructor owns.)
     const ended = (await x.env.mem.sessions.getSession(x.sessionId))?.endedAt ?? new Date();
+    const earlier = await x.env.mem.sessions.createSession(SILENT_RIDGE_ID, 'EARLY2', 'u-inst');
     await x.env.mem.sessions.saveSessionMetrics([
       {
         userId: 'u-pl',
-        sessionId: 'earlier-session',
+        sessionId: earlier.id,
         endedAt: new Date(ended.getTime() - 3_600_000),
         avgDecisionLatencyMs: 60_000,
         latencyUnderJammingMs: 80_000,

@@ -40,6 +40,7 @@ const sessionRow = (s: SessionWithScenario): SessionRow => ({
   endedAt: s.endedAt,
   createdAt: s.createdAt,
   ...profileSchema.parse(s.degradationProfile),
+  ownerId: s.ownerId,
 });
 
 const teamRow = (t: {
@@ -73,12 +74,13 @@ const isCode = (err: unknown, code: string): boolean =>
 
 export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
   return {
-    async createSession(scenarioId, code, profile) {
+    async createSession(scenarioId, code, ownerId, profile) {
       try {
         const s = await prisma.session.create({
           data: {
             scenarioId,
             code,
+            ownerId,
             degradationProfile: profile
               ? { clean: profile.clean, baselineOfId: profile.baselineOfId }
               : {},
@@ -101,6 +103,14 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
     },
     async listSessions() {
       const rows = await prisma.session.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { ...withScenario, _count: { select: { players: true } } },
+      });
+      return rows.map((s) => ({ ...sessionRow(s), playerCount: s._count.players }));
+    },
+    async listSessionsForInstructor(userId) {
+      const rows = await prisma.session.findMany({
+        where: { OR: [{ ownerId: userId }, { coInstructors: { some: { userId } } }] },
         orderBy: { createdAt: 'desc' },
         include: { ...withScenario, _count: { select: { players: true } } },
       });
@@ -141,6 +151,33 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
         prisma.player.updateMany({ where: { teamId }, data: { teamId: null } }),
         prisma.team.deleteMany({ where: { id: teamId } }),
       ]);
+    },
+
+    async listCoInstructors(sessionId) {
+      const rows = await prisma.sessionInstructor.findMany({
+        where: { sessionId },
+        orderBy: { addedAt: 'asc' },
+        select: { userId: true },
+      });
+      return rows.map((r) => r.userId);
+    },
+    async isCoInstructor(sessionId, userId) {
+      const row = await prisma.sessionInstructor.findUnique({
+        where: { sessionId_userId: { sessionId, userId } },
+        select: { userId: true },
+      });
+      return row !== null;
+    },
+    async addCoInstructor(sessionId, userId) {
+      await prisma.sessionInstructor.upsert({
+        where: { sessionId_userId: { sessionId, userId } },
+        update: {},
+        create: { sessionId, userId },
+      });
+    },
+    async removeCoInstructor(sessionId, userId) {
+      const removed = await prisma.sessionInstructor.deleteMany({ where: { sessionId, userId } });
+      return removed.count > 0;
     },
 
     async listPlayers(sessionId) {
@@ -275,11 +312,18 @@ export function createPrismaSessionStore(prisma: PrismaClient): SessionStore {
       });
       return u;
     },
-    async listTrainees() {
+    async listTrainees(countedSessionIds) {
       const users = await prisma.user.findMany({
         where: { role: 'TRAINEE' },
         orderBy: [{ isDemoBot: 'asc' }, { name: 'asc' }],
-        select: { id: true, name: true, isDemoBot: true, _count: { select: { metrics: true } } },
+        select: {
+          id: true,
+          name: true,
+          isDemoBot: true,
+          _count: {
+            select: { metrics: { where: { sessionId: { in: [...countedSessionIds] } } } },
+          },
+        },
       });
       return users.map((u) => ({
         id: u.id,

@@ -23,6 +23,7 @@ export default {
         navy: 'hsl(var(--navy) / <alpha-value>)',
         saffron: 'hsl(var(--saffron) / <alpha-value>)',
         'india-green': 'hsl(var(--india-green) / <alpha-value>)',
+        olive: 'hsl(var(--olive) / <alpha-value>)',
       },
       borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)' },
     },

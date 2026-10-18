@@ -4,22 +4,22 @@ SIH 26248 · Immersive multi-domain decision-making trainer for degraded communi
 See `CLAUDE.md` for the full plan.
 
 ## Prerequisites
-- Node.js 20+
+- Node.js 24 LTS (`.nvmrc`; 22.22+ also works). Node 20 is end-of-life and cannot run the test tools.
 - pnpm 9 (`npm install -g pnpm@9`)
 - Docker Desktop (must be running)
 
 ## Setup
 ```bash
-cp .env.example .env         # then set JWT_SECRET in it: openssl rand -hex 32
-cp apps/server/.env.example apps/server/.env
+cp .env.example .env         # set POSTGRES_PASSWORD (openssl rand -hex 24) and JWT_SECRET (openssl rand -hex 32)
+cp apps/server/.env.example apps/server/.env   # put the same POSTGRES_PASSWORD into its DATABASE_URL
 cp apps/web/.env.example apps/web/.env
 
-docker compose up -d db      # PostgreSQL 16 on localhost:5432
+pnpm db:up                   # PostgreSQL 16 on 127.0.0.1:5432 only (docker-compose.dev.yml)
 pnpm install
 pnpm db:migrate              # prisma migrate dev
 pnpm dev                     # server :4000, web :5173
 ```
-Open http://localhost:5173 and choose **Instructor login** or **Trainee login** (demo accounts after `pnpm db:seed`: `instructor@vyuha.local` and `trainee1@vyuha.local` to `trainee6@vyuha.local`, password `Vyuha@123`; both sign-in pages show them in a **Demo access** box, hidden with `VITE_SHOW_DEMO_LOGIN=false`). Trainees can create their own account; instructor accounts are issued by an administrator. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
+Open http://localhost:5173 and choose **Instructor login** or **Trainee login** (demo accounts after `pnpm db:seed`: `instructor@vyuha.local` and `trainee1@vyuha.local` to `trainee6@vyuha.local`, password `Vyuha@123`; both sign-in pages show them in a **Demo access** box, hidden with `VITE_SHOW_DEMO_LOGIN=false`). The published password is for development and for a deliberate public demo only: production refuses it unless `DEMO_MODE=true` (see below). Trainees can create their own account; instructor accounts are issued by an administrator. Check the API at http://localhost:4000/health → `{"ok":true,"db":true}`.
 
 ## Demo script for judges (5 steps, about 10 minutes)
 
@@ -48,10 +48,26 @@ Fixes from the audit: actions queued when the instructor ends the exercise are a
 
 ## Full stack in Docker
 ```bash
-cp .env.example .env         # set JWT_SECRET: compose refuses to start without it
-docker compose up --build    # web :8080, server :4000, db :5432
+cp .env.example .env         # set POSTGRES_PASSWORD, JWT_SECRET and SEED_PASSWORD (see the file)
+docker compose up --build    # web :8080, server :4000
 ```
-The stack seeds the three scenarios and the demo accounts on first start and needs no internet once the images are built. If port 5432 is already taken by a local PostgreSQL, remove the `ports` entry of the `db` service: the server reaches the database inside the compose network.
+The stack seeds the three scenarios and the demo accounts on first start and needs no internet once the images are built. The demo accounts' password is your `SEED_PASSWORD`, not the published one.
+
+Secure by default:
+
+| What | Behaviour |
+| --- | --- |
+| Database port | Not published on the host. Only the server reaches PostgreSQL, over the stack's private network. `pnpm db:up` (adds `docker-compose.dev.yml`) publishes it on `127.0.0.1` for local development; `POSTGRES_HOST_PORT` picks another port. |
+| Secrets | `POSTGRES_PASSWORD` and `JWT_SECRET` have no defaults: `docker compose` stops with a message until they are set. Use letters and digits (`openssl rand -hex …`), because they go into URLs. |
+| Demo accounts | With `SEED_ON_START=true` (default) the seed refuses to run without a `SEED_PASSWORD` of 12+ characters that is not the published one. Set `SEED_ON_START=false` once real accounts exist. |
+| Production refusals | The server will not start in production with the placeholder `JWT_SECRET`, an empty or published database password, or a demo account that still accepts the published password (unless `DEMO_MODE=true`, the explicit public-demo opt-in the Render blueprint uses; it warns on every start). |
+| Containers | The server runs as `node` (uid 1000) and the web as `nginx` (uid 101, port 8080 inside the container). Both have read-only root filesystems with only `/tmp` writable and `no-new-privileges`. |
+
+**Upgrading an existing stack.** PostgreSQL sets its password only when the `pgdata` volume is first created, so a new `POSTGRES_PASSWORD` does not change an existing database. To move off the old published password, start only the database with the old value, then set the new one:
+```bash
+docker compose exec db psql -U vyuha -c "\password vyuha"   # type the new POSTGRES_PASSWORD at the prompt
+```
+Then put the new value in `.env` and run `docker compose up -d`. Demo accounts that still use the published password get `SEED_PASSWORD` on the next start (with `SEED_ON_START=true`). With the seed off, the server refuses to start and names those accounts.
 
 ### Offline base map
 The map works with no internet by default (`MAP_MODE=offline`): the exercise-area tiles (`apps/web/public/tiles/area.pmtiles`) and map fonts and sprites (`apps/web/public/map-assets/`) are in the repo. To regenerate them for another area or newer data, run `scripts/fetch-tiles.sh` once while online (needs `curl`, `unzip` and Node). Set `MAP_MODE=online` in `.env` to use the hosted OpenFreeMap style instead. Details in `docs/ARCHITECTURE.md`.
@@ -112,8 +128,8 @@ Test: `pnpm --filter @vyuha/server test` (AAR export and replay tests), `pnpm --
 - Server: helmet headers, exact CORS allow-list, 1 MiB body and 64 KiB socket limits, login/register throttling, log redaction (`LOG_LEVEL`).
 - Web: error boundary with reload and home actions.
 - Guards in the test suite: payload-leak test (no ground truth to trainees, instructor-only endpoints), engine performance budget (4 teams x 4 players, tick under 100 ms), replay equality.
-- End-to-end: `pnpm e2e` drives an instructor and two trainees in Chrome through spoof, end and PDF export. Needs `docker compose up -d db`, `pnpm db:migrate` and `pnpm db:seed`; it reuses servers already running on 4000 and 5173.
-- Docs: `docs/ARCHITECTURE.md` (design, security, air-gapped deployment) and `docs/DEMO_SCRIPT.md` (12-minute walkthrough).
+- End-to-end: `pnpm e2e` drives an instructor and two trainees in Chrome through spoof, end and PDF export. Needs `pnpm db:up`, `pnpm db:migrate` and `pnpm db:seed`; it reuses servers already running on 4000 and 5173.
+- Docs: `docs/ARCHITECTURE.md` (design, security, session ownership, single-instance limit, environment variables, air-gapped deployment), `docs/OPERATIONS.md` (health, metrics, backups, restore, routine tasks) and `docs/DEMO_SCRIPT.md` (12-minute walkthrough).
 
 ## Progress across sessions
 

@@ -45,8 +45,8 @@ Extra coverage: quality of judgement under uncertainty, deception (spoofed order
 - pnpm workspaces monorepo
   - `packages/engine` — pure TS simulation, deterministic (`mulberry32`), heavily unit tested.
   - `packages/shared` — Zod schemas, shared types, socket event contracts.
-  - `apps/server` — Node 20, Fastify, Socket.IO, Prisma, PostgreSQL.
-  - `apps/web` — Vite + React 18 + TS, Tailwind, shadcn/ui, MapLibre GL JS, Zustand, React Router, i18next.
+  - `apps/server` — Node 24 LTS, Fastify, Socket.IO, Prisma, PostgreSQL.
+  - `apps/web` — Vite + React 18 + TS, Tailwind, shadcn/ui, MapLibre GL JS, React Router, i18next. State: React context (`AuthContext`) and the `useSessionSocket` hook (live session state); no Zustand.
 - DB: PostgreSQL 16 (Docker), Prisma.
 - Auth: JWT in httpOnly cookie; roles `INSTRUCTOR`, `TRAINEE`; trainees join via 6-char session code.
 - Exports: PDF via `@react-pdf/renderer` (server), JSON, CSV.

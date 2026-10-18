@@ -15,6 +15,11 @@ export interface SessionRow {
   clean: boolean;
   /** For a baseline run: the finished session it is the twin of. */
   baselineOfId: string | null;
+  /**
+   * The instructor who created the session. Null = no owner (created before ownership existed, or the
+   * owner's account was deleted): no instructor may run or review it until an owner is assigned.
+   */
+  ownerId: string | null;
 }
 
 /** How a session differs from an ordinary degraded run. */
@@ -115,10 +120,18 @@ export type PlayerPatch = Partial<Pick<PlayerRow, 'teamId' | 'role' | 'unitId'>>
 
 /** Persistence for sessions. Prisma in production, in-memory in unit tests. */
 export interface SessionStore {
-  createSession(scenarioId: string, code: string, profile?: SessionProfile): Promise<SessionRow>;
+  createSession(
+    scenarioId: string,
+    code: string,
+    ownerId: string,
+    profile?: SessionProfile,
+  ): Promise<SessionRow>;
   getSession(id: string): Promise<SessionRow | null>;
   getSessionByCode(code: string): Promise<SessionRow | null>;
+  /** Every session (server-side use only; never answer a request with this unfiltered). */
   listSessions(): Promise<(SessionRow & { playerCount: number })[]>;
+  /** Sessions the instructor owns or was explicitly added to as a co-instructor, newest first. */
+  listSessionsForInstructor(userId: string): Promise<(SessionRow & { playerCount: number })[]>;
   /** Sessions that were RUNNING or PAUSED (used to resume after a restart). */
   listRunnable(): Promise<SessionRow[]>;
   updateSession(id: string, patch: SessionPatch): Promise<SessionRow>;
@@ -130,6 +143,13 @@ export interface SessionStore {
     patch: { name?: string | undefined; pace?: PaceDefaults | undefined },
   ): Promise<TeamRow | null>;
   deleteTeam(teamId: string): Promise<void>;
+
+  /** User ids of the session's co-instructors (the owner is not included). */
+  listCoInstructors(sessionId: string): Promise<string[]>;
+  isCoInstructor(sessionId: string, userId: string): Promise<boolean>;
+  addCoInstructor(sessionId: string, userId: string): Promise<void>;
+  /** False when the user was not a co-instructor of the session. */
+  removeCoInstructor(sessionId: string, userId: string): Promise<boolean>;
 
   listPlayers(sessionId: string): Promise<PlayerRow[]>;
   addPlayer(sessionId: string, userId: string): Promise<PlayerRow>;
@@ -148,6 +168,11 @@ export interface SessionStore {
   /** A trainee's metrics for every ended session, oldest first. */
   listUserProgress(userId: string): Promise<UserProgressRow[]>;
   getUserBrief(userId: string): Promise<TraineeBrief | null>;
-  /** Every trainee account with the number of sessions that have metrics. */
-  listTrainees(): Promise<(TraineeBrief & { sessionCount: number })[]>;
+  /**
+   * Every trainee account with the number of its metric rows that belong to `countedSessionIds` (the
+   * sessions the reader may review); metrics from any other session are never counted.
+   */
+  listTrainees(
+    countedSessionIds: ReadonlySet<string>,
+  ): Promise<(TraineeBrief & { sessionCount: number })[]>;
 }

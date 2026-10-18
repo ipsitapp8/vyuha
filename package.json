@@ -6,7 +6,7 @@
   "description": "VYUHA (Virtual Yuddh-abhyas Under Hampered Awareness) - SIH 26248",
   "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": ">=20"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,green \"pnpm --filter @vyuha/server dev\" \"pnpm --filter @vyuha/web dev\"",
@@ -15,6 +15,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
     "db:migrate": "pnpm --filter @vyuha/server db:migrate",
     "db:seed": "pnpm --filter @vyuha/server db:seed",
     "e2e": "playwright test",

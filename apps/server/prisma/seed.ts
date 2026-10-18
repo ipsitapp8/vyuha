@@ -5,53 +5,67 @@ import { loadConfig } from '../src/config';
 import { bundledGeo } from '../src/geo/bundled';
 import { ingestScenarioGeo } from '../src/geo/ingest';
 import { createOpenMeteoNetwork } from '../src/geo/openMeteo';
+import {
+  DEMO_INSTRUCTOR,
+  DEMO_TRAINEE_NAMES,
+  accountsWithPublishedPassword,
+  demoTraineeEmail,
+  resolveSeedPassword,
+} from '../src/seed/demoAccounts';
 import { SEED_SCENARIOS } from '../src/seed/scenarios';
 
-/** Demo accounts share one password (SEED_PASSWORD, default Vyuha@123). */
-const DEMO_PASSWORD = process.env['SEED_PASSWORD'] ?? 'Vyuha@123';
-/**
- * SEED_RESET_PASSWORDS=true makes every start set the demo accounts back to DEMO_PASSWORD, so the demo login shown
- * on the sign-in pages keeps working. Leave it off for a real deployment: accounts then keep their own password.
- */
-const RESET_PASSWORDS = process.env['SEED_RESET_PASSWORDS'] === 'true';
-
-const INSTRUCTOR = {
-  name: 'Col. Instructor',
-  email: 'instructor@vyuha.local',
-  password: DEMO_PASSWORD,
-};
-const TRAINEE_NAMES = [
-  'Aarav Singh',
-  'Meera Nair',
-  'Rohan Das',
-  'Kavya Iyer',
-  'Imran Khan',
-  'Tenzin Dorje',
-];
-
 async function main(): Promise<void> {
+  // Validates the whole environment first (JWT secret, database password rules in production).
+  const config = loadConfig();
+  // Demo accounts share one password: the published one in development, SEED_PASSWORD in production
+  // (which may be the published one only with DEMO_MODE=true, a deliberate public demo).
+  const demoPassword = resolveSeedPassword(process.env);
+  /**
+   * SEED_RESET_PASSWORDS=true sets the demo accounts back to that password on every start, so the demo login
+   * shown on the sign-in pages keeps working. Leave it off for a real deployment: accounts then keep their own.
+   */
+  const resetPasswords = process.env['SEED_RESET_PASSWORDS'] === 'true';
+
   const instructor = await prisma.user.upsert({
-    where: { email: INSTRUCTOR.email },
-    update: RESET_PASSWORDS ? { passwordHash: await hashPassword(INSTRUCTOR.password) } : {},
+    where: { email: DEMO_INSTRUCTOR.email },
+    update: resetPasswords ? { passwordHash: await hashPassword(demoPassword) } : {},
     create: {
-      name: INSTRUCTOR.name,
-      email: INSTRUCTOR.email,
-      passwordHash: await hashPassword(INSTRUCTOR.password),
+      name: DEMO_INSTRUCTOR.name,
+      email: DEMO_INSTRUCTOR.email,
+      passwordHash: await hashPassword(demoPassword),
       role: 'INSTRUCTOR',
     },
   });
 
-  for (const [i, name] of TRAINEE_NAMES.entries()) {
-    const email = `trainee${i + 1}@vyuha.local`;
+  for (const [i, name] of DEMO_TRAINEE_NAMES.entries()) {
+    const email = demoTraineeEmail(i);
     await prisma.user.upsert({
       where: { email },
-      update: RESET_PASSWORDS ? { passwordHash: await hashPassword(DEMO_PASSWORD) } : {},
-      create: { name, email, passwordHash: await hashPassword(DEMO_PASSWORD), role: 'TRAINEE' },
+      update: resetPasswords ? { passwordHash: await hashPassword(demoPassword) } : {},
+      create: { name, email, passwordHash: await hashPassword(demoPassword), role: 'TRAINEE' },
     });
   }
 
+  // Production never keeps the published password: demo accounts created by an older seed get
+  // SEED_PASSWORD instead. Other passwords (changed by their users) are left alone.
+  if (config.NODE_ENV === 'production' && !config.DEMO_MODE) {
+    const exposed = await accountsWithPublishedPassword(
+      async (email) =>
+        (await prisma.user.findUnique({ where: { email }, select: { passwordHash: true } }))
+          ?.passwordHash ?? null,
+    );
+    for (const email of exposed) {
+      await prisma.user.update({
+        where: { email },
+        data: { passwordHash: await hashPassword(demoPassword) },
+      });
+    }
+    if (exposed.length > 0) {
+      console.log(`Replaced the published demo password on ${exposed.length} account(s).`);
+    }
+  }
+
   // Real terrain + weather: try Open-Meteo once (fail fast), else use the bundled real-data copy.
-  const config = loadConfig();
   const network = createOpenMeteoNetwork({
     elevationUrl: config.OPEN_METEO_ELEVATION_URL,
     forecastUrl: config.OPEN_METEO_FORECAST_URL,
@@ -79,7 +93,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Seeded 1 instructor, ${TRAINEE_NAMES.length} trainees and ${SEED_SCENARIOS.length} scenarios.`,
+    `Seeded 1 instructor, ${DEMO_TRAINEE_NAMES.length} trainees and ${SEED_SCENARIOS.length} scenarios.`,
   );
 }
 

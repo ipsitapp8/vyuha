@@ -8,6 +8,9 @@
  *
  * Run: pnpm demo:history            (adds the history once)
  *      pnpm demo:history -- --reset (removes the bots' sessions first, then plays them again)
+ *      pnpm demo:history -- --owner someone@example.org
+ *                                   (instructor who owns the demo sessions; default: the seeded
+ *                                    instructor@vyuha.local)
  * Needs the database to be migrated and seeded (pnpm db:migrate && pnpm db:seed).
  */
 import { randomUUID } from 'node:crypto';
@@ -20,6 +23,7 @@ import { SILENT_RIDGE_ID } from '../src/seed/silentRidge';
 
 const BOT_NAMES = ['Demo Bot Alpha', 'Demo Bot Bravo', 'Demo Bot Charlie'] as const;
 const SESSIONS = 3;
+const DEFAULT_OWNER_EMAIL = 'instructor@vyuha.local';
 
 const emailFor = (name: string): string => `${name.toLowerCase().replace(/\s+/g, '-')}@vyuha.demo`;
 
@@ -39,6 +43,17 @@ async function ensureBots(): Promise<PublicUser[]> {
   return bots;
 }
 
+/** The instructor named with --owner (or the seeded one), who will own and can review the sessions. */
+async function demoOwner(): Promise<string> {
+  const at = process.argv.indexOf('--owner');
+  const email = (at >= 0 ? process.argv[at + 1] : undefined) ?? DEFAULT_OWNER_EMAIL;
+  const owner = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+  if (!owner || owner.role !== 'INSTRUCTOR') {
+    throw new Error(`No instructor account ${email}. Pass --owner <instructor email>.`);
+  }
+  return owner.id;
+}
+
 async function main(): Promise<void> {
   const reset = process.argv.includes('--reset');
   const config = loadConfig();
@@ -54,6 +69,7 @@ async function main(): Promise<void> {
   }
   if (DEMO_TEAM.length !== BOT_NAMES.length) throw new Error('bot names and demo team differ');
 
+  const ownerId = await demoOwner();
   const bots = await ensureBots();
   const botIds = bots.map((b) => b.id);
 
@@ -77,6 +93,7 @@ async function main(): Promise<void> {
     scenarios: deps.scenarios,
     geo: deps.geo,
     scenarioId: SILENT_RIDGE_ID,
+    ownerId,
     bots,
     sessions: SESSIONS,
     log: {

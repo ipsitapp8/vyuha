@@ -1,13 +1,16 @@
+# Production-style stack (also the air-gapped one). Required in .env: POSTGRES_PASSWORD, JWT_SECRET and,
+# while SEED_ON_START is true, SEED_PASSWORD. Copy .env.example to .env and fill them in.
 services:
   db:
     image: postgres:16
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vyuha}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vyuha_dev_password}
+      # No default: a published password would be the same on every install.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env to a random value, for example with openssl rand -hex 24}
       POSTGRES_DB: ${POSTGRES_DB:-vyuha}
-    ports:
-      - '5432:5432'
+    # No host port: only the server talks to PostgreSQL, over this project's private network.
+    # For local development (pnpm dev) add docker-compose.dev.yml, which publishes it on 127.0.0.1 only.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -27,16 +30,41 @@ services:
     environment:
       NODE_ENV: production
       PORT: '4000'
-      DATABASE_URL: postgresql://${POSTGRES_USER:-vyuha}:${POSTGRES_PASSWORD:-vyuha_dev_password}@db:5432/${POSTGRES_DB:-vyuha}
+      # POSTGRES_PASSWORD goes into a URL: use letters and digits only (openssl rand -hex 24 does).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vyuha}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-vyuha}
       # No default: the stack refuses to start until JWT_SECRET is set in .env (openssl rand -hex 32).
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env to 32 or more random characters, for example with openssl rand -hex 32}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      # Creates the demo accounts and Op Silent Ridge on start so a fresh stack is usable offline.
-      # Set to false once real accounts exist.
+      # Creates the demo accounts and the scenarios on start so a fresh stack is usable offline.
+      # The seed refuses to run without SEED_PASSWORD (12+ characters, not the published demo password).
+      # Set SEED_ON_START=false once real accounts exist.
       SEED_ON_START: ${SEED_ON_START:-true}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      # Optional: enables GET /metrics for a scraper holding this token (32+ characters). Empty = off.
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
     ports:
       - '4000:4000'
+    # Ready = the API answers and reaches PostgreSQL (GET /health/ready is 503 otherwise). The image has
+    # no curl, so Node's own fetch does the probe.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+    # Runs as the image's unprivileged `node` user; nothing in the image is writable except /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
 
   web:
     build:
@@ -47,11 +75,21 @@ services:
         VITE_MAP_MODE: ${MAP_MODE:-offline}
         VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
         VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}
+        # The sign-in pages' "Demo access" box shows the published demo password, which this stack refuses
+        # (SEED_PASSWORD is your own); it stays hidden unless you set SHOW_DEMO_LOGIN=true for a demo.
+        VITE_SHOW_DEMO_LOGIN: ${SHOW_DEMO_LOGIN:-false}
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     ports:
-      - '8080:80'
+      # nginx runs unprivileged and listens on 8080 inside the container.
+      - '8080:8080'
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   pgdata:

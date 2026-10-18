@@ -1,4 +1,4 @@
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
@@ -6,11 +6,16 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @vyuha/server build
 
-FROM node:20-slim
+FROM node:24-slim
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
 WORKDIR /repo
+# Files stay owned by root, so the running server cannot modify its own code, Prisma engines or migrations.
 COPY --from=build /repo /repo
-ENV NODE_ENV=production
+RUN chmod 0755 /repo/apps/server/docker-entrypoint.sh
+ENV NODE_ENV=production \
+    CHECKPOINT_DISABLE=1 \
+    PRISMA_HIDE_UPDATE_MESSAGE=1
+# The unprivileged user that ships with the node image (uid 1000).
+USER node
 EXPOSE 4000
-CMD ["sh", "-c", "pnpm --filter @vyuha/server db:deploy && if [ \"$SEED_ON_START\" = \"true\" ]; then pnpm --filter @vyuha/server db:seed; fi && pnpm --filter @vyuha/server start"]
+CMD ["/repo/apps/server/docker-entrypoint.sh"]

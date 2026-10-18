@@ -26,6 +26,31 @@ describe('loadConfig', () => {
     // the placeholder stays usable for local development
     expect(loadConfig({ ...valid, JWT_SECRET: placeholder }).NODE_ENV).toBe('development');
   });
+  it('production refuses an empty or published database password, without echoing it', () => {
+    const prod = { ...valid, NODE_ENV: 'production' };
+    const published = 'postgresql://vyuha:vyuha_dev_password@db:5432/vyuha';
+    expect(() => loadConfig({ ...prod, DATABASE_URL: published })).toThrow(/DATABASE_URL/);
+    expect(() => loadConfig({ ...prod, DATABASE_URL: published })).not.toThrow(
+      /vyuha_dev_password/,
+    );
+    expect(() =>
+      loadConfig({ ...prod, DATABASE_URL: 'postgresql://vyuha:@db:5432/vyuha' }),
+    ).toThrow(/DATABASE_URL/);
+    // A random password, or a URL with no password part (socket or platform auth), is accepted.
+    expect(
+      loadConfig({ ...prod, DATABASE_URL: 'postgresql://vyuha:3f9c1a7e5b@db:5432/vyuha' }).NODE_ENV,
+    ).toBe('production');
+    expect(loadConfig({ ...prod, DATABASE_URL: 'postgresql://vyuha@db:5432/vyuha' }).NODE_ENV).toBe(
+      'production',
+    );
+    // Local development keeps working with the old example password.
+    expect(loadConfig({ ...valid, DATABASE_URL: published }).NODE_ENV).toBe('development');
+  });
+  it('reads DEMO_MODE strictly and defaults to off', () => {
+    expect(loadConfig(valid).DEMO_MODE).toBe(false);
+    expect(loadConfig({ ...valid, DEMO_MODE: 'true' }).DEMO_MODE).toBe(true);
+    expect(() => loadConfig({ ...valid, DEMO_MODE: 'yes' })).toThrow(/DEMO_MODE/);
+  });
   it('rejects a short JWT secret', () => {
     expect(() => loadConfig({ ...valid, JWT_SECRET: 'short' })).toThrow(/JWT_SECRET/);
   });

@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import type { Plugin } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { nginxSecurityHeaders } from './src/lib/securityHeaders';
 
 // MapLibre 6 runs in a module worker whose URL it derives from its own module location. Once Vite
 // bundles it into the app chunk that guess is wrong, so we serve the worker files ourselves at a fixed
@@ -33,8 +34,29 @@ function maplibreWorker(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), maplibreWorker()],
+// The production web container's nginx headers, built from the same VITE_* values as the bundle so the
+// Content-Security-Policy allows exactly the API and map hosts this build talks to. apps/web/Dockerfile
+// moves the file out of dist into nginx's config.
+function nginxHeaders(env: Record<string, string>): Plugin {
+  return {
+    name: 'vyuha-nginx-security-headers',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'nginx/security-headers.conf',
+        source: nginxSecurityHeaders({
+          apiUrl: env['VITE_API_URL'],
+          mapMode: env['VITE_MAP_MODE'],
+          mapStyleUrl: env['VITE_MAP_STYLE_URL'],
+        }),
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), maplibreWorker(), nginxHeaders(loadEnv(mode, process.cwd(), 'VITE_'))],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: { port: 5173 },
   test: {
@@ -45,4 +67,4 @@ export default defineConfig({
     // made the first test of a file fail by timeout alone.
     testTimeout: 20_000,
   },
-});
+}));

@@ -31,6 +31,7 @@ async function played() {
     scenarios: env.mem.deps.scenarios,
     geo: env.mem.deps.geo,
     scenarioId: SILENT_RIDGE_ID,
+    ownerId: 'u-inst',
     bots,
   });
   return { env, bots, results };

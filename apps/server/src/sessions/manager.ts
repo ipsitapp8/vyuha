@@ -61,6 +61,9 @@ const MAX_LAG_MS = 5000;
 const MAX_PENDING_INPUTS = 200;
 const DEFAULT_WEATHER = { visibilityM: 10_000, precipitationMm: 0, windKph: 0 };
 
+/** The part of a socket's server-side data that names its signed-in user (set by the socket handlers). */
+const socketUserSchema = z.object({ user: z.object({ id: z.string() }) });
+
 export const room = {
   session: (id: string): string => `session:${id}`,
   player: (id: string, playerId: string): string => `session:${id}:player:${playerId}`,
@@ -161,6 +164,16 @@ interface Runtime {
   timer: unknown;
   nextDue: number;
   queue: Promise<unknown>;
+  /** How late the last tick timer fired (ms), for the operational metrics. */
+  lagMs: number;
+}
+
+/** Aggregate runtime figures for /metrics: counts and timings only, never ids or session content. */
+export interface ManagerStats {
+  runningSessions: number;
+  pausedSessions: number;
+  maxTickLagMs: number;
+  ticksProcessed: number;
 }
 
 export function toEngineInput(playerId: string, a: PlayerAction): EngineInput {
@@ -269,6 +282,7 @@ export function buildTruthView(state: TruthState, metrics: LiveMetrics): TruthVi
  */
 export class SessionManager {
   private readonly runtimes = new Map<string, Runtime>();
+  private ticksProcessed = 0;
 
   constructor(
     private readonly store: SessionStore,
@@ -556,6 +570,18 @@ export class SessionManager {
     }
   }
 
+  /**
+   * Drops every socket of `userId` that is joined to this session, so an instructor whose access was
+   * withdrawn stops receiving the truth view straight away (a reconnect has to pass the join check again).
+   */
+  async disconnectUser(sessionId: string, userId: string): Promise<void> {
+    const sockets = await this.io.in(room.session(sessionId)).fetchSockets();
+    for (const socket of sockets) {
+      const owner = socketUserSchema.safeParse(socket.data);
+      if (owner.success && owner.data.user.id === userId) socket.disconnect(true);
+    }
+  }
+
   // ---- recovery -------------------------------------------------------------------------
 
   /** After a server restart: rebuild every RUNNING session by replaying its event log and continue. */
@@ -600,6 +626,26 @@ export class SessionManager {
     for (const rt of this.runtimes.values()) this.stopLoop(rt);
   }
 
+  stats(): ManagerStats {
+    let running = 0;
+    let paused = 0;
+    let lag = 0;
+    for (const rt of this.runtimes.values()) {
+      if (rt.status === 'RUNNING') {
+        running += 1;
+        lag = Math.max(lag, rt.lagMs);
+      } else if (rt.status === 'PAUSED') {
+        paused += 1;
+      }
+    }
+    return {
+      runningSessions: running,
+      pausedSessions: paused,
+      maxTickLagMs: lag,
+      ticksProcessed: this.ticksProcessed,
+    };
+  }
+
   /** Test/ops hook: run `batches` loop iterations right now (each is `speed` ticks). */
   async stepNow(sessionId: string, batches = 1): Promise<void> {
     const rt = await this.requireRuntime(sessionId);
@@ -622,6 +668,7 @@ export class SessionManager {
       timer: null,
       nextDue: 0,
       queue: Promise.resolve(),
+      lagMs: 0,
     };
   }
 
@@ -658,6 +705,7 @@ export class SessionManager {
   private async onTimer(rt: Runtime): Promise<void> {
     rt.timer = null;
     if (rt.status !== 'RUNNING') return;
+    rt.lagMs = Math.max(0, this.sched.now() - rt.nextDue);
     try {
       await this.exclusive(rt, () => this.tickBatch(rt));
     } catch (err) {
@@ -714,6 +762,7 @@ export class SessionManager {
       return false;
     }
     rt.state = state;
+    this.ticksProcessed += ticks;
     rt.metrics.ingest(events);
     this.emitBatch(rt, events);
     return true;
