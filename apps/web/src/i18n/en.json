@@ -24,6 +24,8 @@
   "landing": {
     "heroTitle": "Decide right when communications go wrong",
     "heroBody": "VYUHA gives each commander a different, degraded view of one hidden battle. Messages arrive late, garbled or not at all, and some orders are fake. Trainees record what they decided, how sure they were and why. The instructor then reviews what each of them saw against what was true.",
+    "startTraining": "Start training",
+    "learnHow": "Learn how it works",
     "howTitle": "How an exercise works",
     "steps": {
       "1": {
