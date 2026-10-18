@@ -89,6 +89,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The seed and the dev server import the generated Prisma client; pnpm does not generate it on install.
+      - run: pnpm --filter @vyuha/server db:generate
       - name: Validate the Prisma schema
         working-directory: apps/server
         run: pnpm exec prisma validate
